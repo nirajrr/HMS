@@ -1,0 +1,6 @@
+{
+  "name": "Hostel ERP & Financial Analytics System",
+  "description": "Comprehensive real-time Hostel Management System featuring room allotment & swapping with chain-of-thought clearance, multi-bank financial reconciliation, mess accounting, police verification form generator, RBAC permissions, and maintenance approval engine.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
