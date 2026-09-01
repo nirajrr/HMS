@@ -17,14 +17,17 @@ import {
   MaintenanceRequest, ActivityLog, PoliceVerificationRecord, 
   FinancialAlert, Review, Notice, UserRole, BedConfig,
   HousekeepingRecord, ResidentComplaint, StudentCleaningRemark, 
-  IdentityDocument, SyncEngineStatus, SyncPacket
+  IdentityDocument, SyncEngineStatus, SyncPacket,
+  UserSecurityProfile, DualSignoffRequest, DataIntegrationConnector, SecurityAuditAssessment
 } from './types';
 import { 
   INITIAL_USERS, INITIAL_BANKS, INITIAL_ROOMS, 
   INITIAL_STUDENTS, INITIAL_TRANSACTIONS, INITIAL_MAINTENANCE, 
   INITIAL_POLICE_RECORDS, INITIAL_ACTIVITY_LOGS, INITIAL_ALERTS,
   INITIAL_REVIEWS, INITIAL_NOTICES, INITIAL_COMPLAINTS, INITIAL_HOUSEKEEPING,
-  INITIAL_SYNC_STATUS, INITIAL_SYNC_PACKETS
+  INITIAL_SYNC_STATUS, INITIAL_SYNC_PACKETS,
+  INITIAL_SECURITY_ASSESSMENT, INITIAL_USER_SECURITY_PROFILES,
+  INITIAL_DUAL_SIGNOFF_REQUESTS, INITIAL_DATA_INTEGRATION_CONNECTORS
 } from './data';
 
 // Import Modular Components
@@ -45,12 +48,14 @@ import { DocumentManagerModal } from './components/DocumentManagerModal';
 import { ResidentComplaintModal } from './components/ResidentComplaintModal';
 import { DualPlatformView } from './components/DualPlatformView';
 import { ReportEngine } from './components/ReportEngine';
+import { SecurityDataIntegrationHub } from './components/SecurityDataIntegrationHub';
 
 export const App: React.FC = () => {
   // Global State
+  const [users, setUsers] = useState<User[]>(INITIAL_USERS);
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_USERS[0]);
   const [activeTab, setActiveTab] = useState<
-    'SYNC_DUAL' | 'REPORTS' | 'OVERVIEW' | 'MASTER_ROOMS' | 'STUDENTS' | 'ROOMS' | 'MESS' | 'FINANCE' | 
+    'SYNC_DUAL' | 'SECURITY' | 'REPORTS' | 'OVERVIEW' | 'MASTER_ROOMS' | 'STUDENTS' | 'ROOMS' | 'MESS' | 'FINANCE' | 
     'MAINTENANCE' | 'COMPLAINTS' | 'POLICE' | 'RBAC' | 'AUDIT' | 'REVIEWS_NOTICES'
   >('SYNC_DUAL');
 
@@ -66,6 +71,12 @@ export const App: React.FC = () => {
   const [notices, setNotices] = useState<Notice[]>(INITIAL_NOTICES);
   const [housekeepingRecords, setHousekeepingRecords] = useState<HousekeepingRecord[]>(INITIAL_HOUSEKEEPING);
   const [complaints, setComplaints] = useState<ResidentComplaint[]>(INITIAL_COMPLAINTS);
+
+  // Security Reassessment, Double Verification (2FA / Dual Sign-off) & Data Integrations
+  const [securityAssessment, setSecurityAssessment] = useState<SecurityAuditAssessment>(INITIAL_SECURITY_ASSESSMENT);
+  const [securityProfiles, setSecurityProfiles] = useState<UserSecurityProfile[]>(INITIAL_USER_SECURITY_PROFILES);
+  const [dualSignoffRequests, setDualSignoffRequests] = useState<DualSignoffRequest[]>(INITIAL_DUAL_SIGNOFF_REQUESTS);
+  const [integrationConnectors, setIntegrationConnectors] = useState<DataIntegrationConnector[]>(INITIAL_DATA_INTEGRATION_CONNECTORS);
 
   // Cross-Platform Real-Time Sync Engine State (.exe <-> .apk)
   const [syncStatus, setSyncStatus] = useState<SyncEngineStatus>(INITIAL_SYNC_STATUS);
@@ -162,6 +173,118 @@ export const App: React.FC = () => {
       ipAddress: '192.168.1.100 (Hostel Desk)',
     };
     setActivityLogs((prev) => [newLog, ...prev]);
+  };
+
+  // Double Verification & Dual Sign-off Handlers
+  const handleApproveDualSignoff = (
+    requestId: string,
+    approverName: string,
+    approverRole: UserRole,
+    otpCode: string
+  ) => {
+    setDualSignoffRequests((prev) =>
+      prev.map((req) => {
+        if (req.id === requestId) {
+          return {
+            ...req,
+            status: 'DOUBLE_VERIFIED_EXECUTED',
+            secondApproverName: approverName,
+            secondApproverRole: approverRole,
+            secondApproverTimestamp: `${new Date().toISOString().replace('T', ' ').slice(0, 19)} IST`,
+            secondApproverOtpCode: otpCode,
+            secondApproverSignatureHash: `RSA4096:${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}`,
+          };
+        }
+        return req;
+      })
+    );
+
+    logActivity(
+      'DUAL_SIGNOFF_DOUBLE_VERIFIED',
+      'SECURITY',
+      `Dual sign-off request #${requestId} double-verified and executed by ${approverName} (${approverRole}) using 2FA OTP.`,
+      `Request #${requestId}`
+    );
+  };
+
+  const handleRejectDualSignoff = (requestId: string, reason: string) => {
+    setDualSignoffRequests((prev) =>
+      prev.map((req) =>
+        req.id === requestId ? { ...req, status: 'REJECTED' } : req
+      )
+    );
+
+    logActivity(
+      'DUAL_SIGNOFF_REJECTED',
+      'SECURITY',
+      `Dual sign-off request #${requestId} rejected by ${currentUser.fullName || currentUser.name}. Reason: ${reason}`,
+      `Request #${requestId}`
+    );
+  };
+
+  const handleCreateDualSignoffRequest = (
+    requestData: Omit<DualSignoffRequest, 'id' | 'initiatorTimestamp' | 'initiatorSignatureHash' | 'status' | 'integrityChecksum'>
+  ) => {
+    const newReq: DualSignoffRequest = {
+      ...requestData,
+      id: `DS-${new Date().getFullYear()}-${String(dualSignoffRequests.length + 1).padStart(3, '0')}`,
+      initiatorTimestamp: `${new Date().toISOString().replace('T', ' ').slice(0, 19)} IST`,
+      initiatorSignatureHash: `RSA4096:${Math.random().toString(36).substring(2, 12)}`,
+      status: 'PENDING_SECOND_VERIFICATION',
+      integrityChecksum: `SHA256:${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
+    };
+
+    setDualSignoffRequests((prev) => [newReq, ...prev]);
+
+    logActivity(
+      'DUAL_SIGNOFF_INITIATED',
+      'SECURITY',
+      `Initiated Dual Sign-off request #${newReq.id} (${newReq.title}). Awaiting ${newReq.requiredApproverRole} second verification.`,
+      `Request #${newReq.id}`
+    );
+  };
+
+  const handleUpdateIntegrationConnector = (
+    connectorId: string,
+    updates: Partial<DataIntegrationConnector>
+  ) => {
+    setIntegrationConnectors((prev) =>
+      prev.map((c) => (c.id === connectorId ? { ...c, ...updates } : c))
+    );
+  };
+
+  const handleTestConnector = async (
+    connectorId: string
+  ): Promise<{ success: boolean; latencyMs: number; message: string }> => {
+    await new Promise((res) => setTimeout(res, 600));
+    const target = integrationConnectors.find((c) => c.id === connectorId);
+    const latency = Math.floor(15 + Math.random() * 35);
+    
+    setIntegrationConnectors((prev) =>
+      prev.map((c) =>
+        c.id === connectorId
+          ? {
+              ...c,
+              lastSyncTimestamp: `Just now (${latency}ms ACK)`,
+              latencyMs: latency,
+              recordsSyncedTotal: c.recordsSyncedTotal + 1,
+            }
+          : c
+      )
+    );
+
+    logActivity(
+      'INTEGRATION_GATEWAY_PINGED',
+      'SECURITY',
+      `Handshake probe successful for ${target?.name || connectorId} (${latency}ms roundtrip latency).`,
+      target?.name
+    );
+
+    return {
+      success: true,
+      latencyMs: latency,
+      message: `200 OK: Handshake & mTLS certificate validated for ${target?.name || connectorId}`,
+    };
   };
 
   // Student Actions
@@ -835,6 +958,27 @@ export const App: React.FC = () => {
     );
   };
 
+  const handleAddBankAccount = (newBankData: Omit<BankAccount, 'id' | 'lastReconciled'>) => {
+    const bankSlug = newBankData.bankName.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8);
+    const newBank: BankAccount = {
+      ...newBankData,
+      id: `bnk_${bankSlug}_${Date.now()}`,
+      upiId: newBankData.upiId || `hostel.${bankSlug || 'pay'}@upi`,
+      currency: 'INR',
+      lastReconciledAt: 'Just linked',
+      lastReconciled: 'Just linked',
+    };
+
+    setBanks((prev) => [...prev, newBank]);
+
+    logActivity(
+      'BANK_ACCOUNT_LINKED',
+      'FINANCE',
+      `Linked new commercial bank account: ${newBank.bankName} (${newBank.accountNumber}) for ${newBank.accountType}. Dynamic UPI QR ID: ${newBank.upiId}`,
+      `Bank: ${newBank.bankName}`
+    );
+  };
+
   const handleReconcileBank = (bankId: string) => {
     const bank = banks.find((b) => b.id === bankId);
     setBanks((prev) =>
@@ -1241,6 +1385,23 @@ export const App: React.FC = () => {
             </div>
 
             <button
+              onClick={() => setActiveTab('SECURITY')}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                activeTab === 'SECURITY'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Security &amp; 2FA Hub</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                {securityAssessment.overallSecurityScore}/100
+              </span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('RBAC')}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === 'RBAC'
@@ -1340,6 +1501,15 @@ export const App: React.FC = () => {
             >
               <FileText className="w-3.5 h-3.5 text-amber-400" />
               <span className="hidden sm:inline">PDF Reports</span>
+            </button>
+
+            {/* Quick Security & 2FA Hub Trigger */}
+            <button
+              onClick={() => setActiveTab('SECURITY')}
+              className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Security &amp; 2FA</span>
             </button>
 
             {/* Direct Lodge Complaint Quick Action */}
@@ -1885,6 +2055,8 @@ export const App: React.FC = () => {
               banks={banks}
               transactions={transactions}
               alerts={alerts}
+              students={students}
+              onAddBankAccount={handleAddBankAccount}
               onReconcileBank={handleReconcileBank}
               onSimulatePayment={handleSimulatePayment}
             />
@@ -2076,9 +2248,45 @@ export const App: React.FC = () => {
           {/* 8. RBAC MANAGEMENT */}
           {activeTab === 'RBAC' && (
             <RbacUserManagement
-              users={INITIAL_USERS}
+              users={users}
               currentUser={currentUser}
               onSwitchUser={(user) => setCurrentUser(user)}
+              onAddUser={(newUser) => {
+                const userWithId: User = {
+                  ...newUser,
+                  id: `usr_${Date.now()}`,
+                  createdAt: new Date().toISOString().split('T')[0],
+                };
+                setUsers((prev) => [...prev, userWithId]);
+                logActivity('USER_PROVISIONED', 'SECURITY', `Provisioned new account for ${newUser.fullName} (@${newUser.username})`);
+              }}
+              onOpenSecurityHub={() => setActiveTab('SECURITY')}
+            />
+          )}
+
+          {/* 8.1 SECURITY REASSESSMENT, DOUBLE VERIFICATION (2FA/DUAL SIGNOFF) & DATA INTEGRATION HUB */}
+          {activeTab === 'SECURITY' && (
+            <SecurityDataIntegrationHub
+              assessment={securityAssessment}
+              securityProfiles={securityProfiles}
+              dualSignoffRequests={dualSignoffRequests}
+              connectors={integrationConnectors}
+              currentUser={currentUser}
+              users={users}
+              syncStatus={syncStatus}
+              onApproveDualSignoff={handleApproveDualSignoff}
+              onRejectDualSignoff={handleRejectDualSignoff}
+              onCreateDualSignoffRequest={handleCreateDualSignoffRequest}
+              onUpdateSecurityProfiles={setSecurityProfiles}
+              onUpdateConnector={handleUpdateIntegrationConnector}
+              onTestConnector={handleTestConnector}
+              onTriggerSnapshot={() => {
+                logActivity(
+                  'ENCRYPTED_SNAPSHOT_EXPORTED',
+                  'SECURITY',
+                  'Exported AES-256 encrypted PG database state snapshot with integrity checksum verification.'
+                );
+              }}
             />
           )}
 

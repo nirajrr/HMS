@@ -3,7 +3,8 @@ import { BankAccount, FeeTransaction, FinancialAlert, Student } from '../types';
 import { 
   Building, CreditCard, AlertTriangle, ShieldCheck, Plus, RefreshCw, 
   ArrowUpRight, ArrowDownRight, CheckCircle2, TrendingUp, DollarSign, 
-  FileSpreadsheet, Zap, HelpCircle, ExternalLink
+  FileSpreadsheet, Zap, HelpCircle, ExternalLink, QrCode, ScanLine,
+  Camera, Smartphone, Copy, Check, Search, Download, CheckCheck
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, 
@@ -34,7 +35,21 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
   onDismissAlert,
 }) => {
   const [showAddBankModal, setShowAddBankModal] = useState(false);
-  const [selectedBankTab, setSelectedBankTab] = useState<string>('ALL');
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [selectedBankForQr, setSelectedBankForQr] = useState<BankAccount | null>(null);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [qrAmount, setQrAmount] = useState<number>(12000);
+  const [qrStudentRoll, setQrStudentRoll] = useState<string>(students[0]?.rollNumber || '');
+  const [qrFeeType, setQrFeeType] = useState<'HOSTEL_FEE' | 'MESS_BILL' | 'CAUTION_DEPOSIT'>('HOSTEL_FEE');
+
+  // Scanner Simulator State
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanSuccessMsg, setScanSuccessMsg] = useState<string | null>(null);
+  const [scannerSelectedBankId, setScannerSelectedBankId] = useState<string>(banks[0]?.id || '');
+  const [scannerAmount, setScannerAmount] = useState<number>(8500);
+  const [scannerStudentRoll, setScannerStudentRoll] = useState<string>(students[0]?.rollNumber || '');
+  const [scannerPaymentRef, setScannerPaymentRef] = useState<string>('');
 
   // Bank Form State
   const [bankFormData, setBankFormData] = useState({
@@ -44,6 +59,7 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
     ifscCode: 'SBIN0001234',
     branchName: 'Main Campus Branch',
     balance: 500000,
+    upiId: '',
     isActive: true,
   });
 
@@ -214,6 +230,15 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => {
+                setScannerSelectedBankId(banks[0]?.id || '');
+                setShowScannerModal(true);
+              }}
+              className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-colors"
+            >
+              <ScanLine className="w-4 h-4" /> Scan &amp; Collect Fees (UPI)
+            </button>
+            <button
               onClick={() => setShowAddBankModal(true)}
               className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-colors"
             >
@@ -240,16 +265,46 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
                 <h4 className="text-sm font-bold text-slate-100">{b.bankName}</h4>
                 <p className="text-xs text-slate-400 font-mono mt-0.5">{b.accountNumber}</p>
                 <p className="text-[11px] text-slate-500">IFSC: {b.ifscCode} • {b.branchName}</p>
+                <div className="mt-2 flex items-center gap-1.5 text-[11px] text-indigo-400 font-mono bg-indigo-950/40 px-2 py-1 rounded-lg border border-indigo-500/20">
+                  <Smartphone className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{b.upiId || `hostel.${b.bankName.slice(0, 4).toLowerCase()}@upi`}</span>
+                </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-slate-800">
-                <span className="text-[10px] text-slate-400 block uppercase">Settled Balance</span>
-                <div className="text-lg font-black text-emerald-400 font-mono">
-                  ₹{b.balance.toLocaleString()}
+              <div className="mt-4 pt-3 border-t border-slate-800 space-y-2">
+                <div>
+                  <span className="text-[10px] text-slate-400 block uppercase">Settled Balance</span>
+                  <div className="text-lg font-black text-emerald-400 font-mono">
+                    ₹{b.balance.toLocaleString()}
+                  </div>
+                  <span className="text-[10px] text-slate-500 block mt-0.5">
+                    Last verified: {b.lastReconciled || 'Just now'}
+                  </span>
                 </div>
-                <span className="text-[10px] text-slate-500 block mt-1">
-                  Last verified: {b.lastReconciled || 'Just now'}
-                </span>
+
+                {/* Bank Quick QR Actions */}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <button
+                    onClick={() => {
+                      setSelectedBankForQr(b);
+                      setShowQrModal(true);
+                    }}
+                    className="w-full py-1.5 px-2 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>UPI QR</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setScannerSelectedBankId(b.id);
+                      setShowScannerModal(true);
+                    }}
+                    className="w-full py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <ScanLine className="w-3.5 h-3.5" />
+                    <span>Scan &amp; Pay</span>
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -434,14 +489,26 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-300 font-medium mb-1">Initial Opening Balance (INR)</label>
-                <input
-                  type="number"
-                  value={bankFormData.balance}
-                  onChange={(e) => setBankFormData({ ...bankFormData, balance: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-100 focus:outline-none"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Initial Opening Balance (INR)</label>
+                  <input
+                    type="number"
+                    value={bankFormData.balance}
+                    onChange={(e) => setBankFormData({ ...bankFormData, balance: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-100 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 font-medium mb-1">Dynamic UPI Virtual ID</label>
+                  <input
+                    type="text"
+                    value={bankFormData.upiId}
+                    onChange={(e) => setBankFormData({ ...bankFormData, upiId: e.target.value })}
+                    placeholder={`e.g. hostel.${bankFormData.bankName.slice(0, 4).toLowerCase()}@upi`}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 font-mono text-slate-100 focus:outline-none placeholder:text-slate-600"
+                  />
+                </div>
               </div>
 
               <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
@@ -460,6 +527,396 @@ export const FinancialDashboard: React.FC<FinancialDashboardProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Dynamic UPI QR Code for Fees Collection */}
+      {showQrModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
+                  <QrCode className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">Dynamic Bank UPI QR Code</h3>
+                  <p className="text-xs text-slate-400">Scan via Google Pay, PhonePe, Paytm or BHIM</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowQrModal(false)}
+                className="text-slate-400 hover:text-slate-200 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Bank Selector inside QR modal */}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-slate-300 text-xs font-semibold mb-1">Target Commercial Bank Ledger</label>
+                <select
+                  value={selectedBankForQr?.id || banks[0]?.id}
+                  onChange={(e) => {
+                    const found = banks.find((b) => b.id === e.target.value);
+                    if (found) setSelectedBankForQr(found);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-100 focus:outline-none"
+                >
+                  {banks.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.bankName} ({b.accountType.replace('_', ' ')}) - {b.accountNumber.slice(-4)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Student & Fee Customization */}
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Select Student</label>
+                  <select
+                    value={qrStudentRoll}
+                    onChange={(e) => setQrStudentRoll(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-100 focus:outline-none"
+                  >
+                    {students.map((s) => (
+                      <option key={s.id} value={s.rollNumber}>
+                        {s.name} ({s.rollNumber})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Fee Category</label>
+                  <select
+                    value={qrFeeType}
+                    onChange={(e) => setQrFeeType(e.target.value as any)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-100 focus:outline-none"
+                  >
+                    <option value="HOSTEL_FEE">Hostel Term Fee</option>
+                    <option value="MESS_BILL">Mess Dining Bill</option>
+                    <option value="CAUTION_DEPOSIT">Caution Deposit Escrow</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-300 text-xs font-semibold mb-1">Collection Amount (₹ INR)</label>
+                <input
+                  type="number"
+                  value={qrAmount}
+                  onChange={(e) => setQrAmount(Number(e.target.value) || 0)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 font-mono text-sm text-emerald-400 font-bold focus:outline-none"
+                />
+              </div>
+
+              {/* QR Code Container */}
+              <div className="p-5 bg-slate-950 border border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center space-y-3">
+                {/* SVG QR Code Simulation */}
+                <div className="relative p-3 bg-white rounded-2xl shadow-xl">
+                  <svg className="w-48 h-48" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Background */}
+                    <rect width="200" height="200" fill="white" rx="8" />
+                    {/* Corner Position Detection Patterns */}
+                    {/* Top Left */}
+                    <rect x="15" y="15" width="45" height="45" rx="4" fill="#0f172a" />
+                    <rect x="23" y="23" width="29" height="29" rx="2" fill="white" />
+                    <rect x="29" y="29" width="17" height="17" rx="2" fill="#4f46e5" />
+                    {/* Top Right */}
+                    <rect x="140" y="15" width="45" height="45" rx="4" fill="#0f172a" />
+                    <rect x="148" y="23" width="29" height="29" rx="2" fill="white" />
+                    <rect x="154" y="29" width="17" height="17" rx="2" fill="#4f46e5" />
+                    {/* Bottom Left */}
+                    <rect x="15" y="140" width="45" height="45" rx="4" fill="#0f172a" />
+                    <rect x="23" y="148" width="29" height="29" rx="2" fill="white" />
+                    <rect x="29" y="154" width="17" height="17" rx="2" fill="#4f46e5" />
+                    {/* Data Matrix Bits */}
+                    <rect x="68" y="18" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="84" y="18" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="100" y="18" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="116" y="18" width="10" height="10" fill="#0f172a" rx="1" />
+                    
+                    <rect x="68" y="34" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="100" y="34" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="116" y="34" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="68" y="50" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="84" y="50" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="116" y="50" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="18" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="34" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="50" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="68" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="100" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="132" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="148" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="168" y="68" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="18" y="84" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="50" y="84" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="68" y="84" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="84" y="84" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="116" y="84" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="148" y="84" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="18" y="100" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="34" y="100" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="84" y="100" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="132" y="100" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="168" y="100" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="18" y="116" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="50" y="116" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="68" y="116" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="100" y="116" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="148" y="116" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="68" y="132" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="84" y="132" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="100" y="132" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="116" y="132" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="148" y="132" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="168" y="132" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="68" y="148" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="100" y="148" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="132" y="148" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="168" y="148" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    <rect x="68" y="164" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="84" y="164" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="116" y="164" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="132" y="164" width="10" height="10" fill="#0f172a" rx="1" />
+                    <rect x="148" y="164" width="10" height="10" fill="#0f172a" rx="1" />
+
+                    {/* Central NPCI / UPI Emblem */}
+                    <circle cx="100" cy="100" r="15" fill="white" />
+                    <circle cx="100" cy="100" r="13" fill="#4f46e5" />
+                    <path d="M96 93L105 100L96 107" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+
+                {/* UPI Intent details */}
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-slate-200">
+                    {(selectedBankForQr || banks[0])?.bankName}
+                  </div>
+                  <div className="text-[11px] font-mono text-indigo-400 flex items-center justify-center gap-1.5">
+                    <span>{(selectedBankForQr || banks[0])?.upiId || 'hostel@upi'}</span>
+                    <button
+                      onClick={() => {
+                        const targetUpi = (selectedBankForQr || banks[0])?.upiId || 'hostel@upi';
+                        navigator.clipboard?.writeText(targetUpi);
+                        setCopiedUpi(true);
+                        setTimeout(() => setCopiedUpi(false), 1500);
+                      }}
+                      className="text-slate-400 hover:text-slate-200 p-0.5"
+                    >
+                      {copiedUpi ? <CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-mono">
+                    upi://pay?pa={(selectedBankForQr || banks[0])?.upiId || 'hostel@upi'}&pn=Hostel_Treasury&am={qrAmount}&cu=INR&tn={qrFeeType}_{qrStudentRoll}
+                  </div>
+                </div>
+              </div>
+
+              {/* Direct simulate trigger */}
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const targetBank = selectedBankForQr || banks[0];
+                    if (onSimulatePayment && targetBank) {
+                      onSimulatePayment(targetBank.id, qrAmount, qrStudentRoll);
+                    }
+                    setShowQrModal(false);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Simulate QR Payment Received (₹{qrAmount.toLocaleString()})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: UPI QR Code Scanner & Fee Collection Auto-Reconciliation */}
+      {showScannerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+                  <ScanLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100">UPI QR Scanner &amp; Fee Settlement</h3>
+                  <p className="text-xs text-slate-400">Scan student UPI payment QR or receipt for instant credit</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowScannerModal(false);
+                  setScanSuccessMsg(null);
+                }}
+                className="text-slate-400 hover:text-slate-200 text-sm font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {scanSuccessMsg ? (
+              <div className="p-5 bg-emerald-950/90 border border-emerald-500/40 rounded-2xl text-center space-y-3 animate-in fade-in">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                  <CheckCheck className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-emerald-300">Payment Successfully Reconciled!</h4>
+                  <p className="text-xs text-emerald-200/90 mt-1">{scanSuccessMsg}</p>
+                </div>
+                <div className="pt-2 flex justify-center">
+                  <button
+                    onClick={() => {
+                      setScanSuccessMsg(null);
+                      setShowScannerModal(false);
+                    }}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg"
+                  >
+                    Done &amp; Return to Dashboard
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Simulated Camera Viewfinder */}
+                <div className="relative h-48 bg-slate-950 rounded-2xl border border-slate-800 overflow-hidden flex flex-col items-center justify-center p-4">
+                  {/* Scanner Laser Bar Animation */}
+                  <div className="absolute inset-x-8 top-1/4 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] animate-pulse" />
+                  
+                  {/* Viewfinder brackets */}
+                  <div className="w-36 h-36 border-2 border-dashed border-emerald-500/50 rounded-2xl flex flex-col items-center justify-center text-center p-3">
+                    <Camera className="w-8 h-8 text-emerald-400/80 mb-1" />
+                    <span className="text-[11px] text-slate-300 font-medium">Position QR Code in Box</span>
+                    <span className="text-[9px] text-slate-500">Auto-detecting NPCI UPI string...</span>
+                  </div>
+
+                  <div className="absolute bottom-2 text-[10px] text-slate-400 font-mono bg-slate-900/80 px-2 py-0.5 rounded-full">
+                    Camera status: LIVE • High-Speed Optical Engine
+                  </div>
+                </div>
+
+                {/* Form fields for scanner reconciliation */}
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Target Commercial Bank</label>
+                    <select
+                      value={scannerSelectedBankId}
+                      onChange={(e) => setScannerSelectedBankId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-100 focus:outline-none"
+                    >
+                      {banks.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.bankName} (₹{b.balance.toLocaleString()})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Student Roll Number</label>
+                    <select
+                      value={scannerStudentRoll}
+                      onChange={(e) => setScannerStudentRoll(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-100 focus:outline-none"
+                    >
+                      {students.map((s) => (
+                        <option key={s.id} value={s.rollNumber}>
+                          {s.name} ({s.rollNumber})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Scanned Amount (₹ INR)</label>
+                    <input
+                      type="number"
+                      value={scannerAmount}
+                      onChange={(e) => setScannerAmount(Number(e.target.value) || 0)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 font-mono text-slate-100 font-bold focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">UTR / Ref Number</label>
+                    <input
+                      type="text"
+                      value={scannerPaymentRef}
+                      onChange={(e) => setScannerPaymentRef(e.target.value)}
+                      placeholder="UPI/2026/8940192"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 font-mono text-slate-100 focus:outline-none placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setShowScannerModal(false)}
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isScanning}
+                    onClick={() => {
+                      setIsScanning(true);
+                      setTimeout(() => {
+                        setIsScanning(false);
+                        const targetBank = banks.find((b) => b.id === scannerSelectedBankId) || banks[0];
+                        if (onSimulatePayment && targetBank) {
+                          onSimulatePayment(targetBank.id, scannerAmount, scannerStudentRoll);
+                        }
+                        setScanSuccessMsg(
+                          `₹${scannerAmount.toLocaleString()} credited to ${targetBank?.bankName} (${targetBank?.accountNumber.slice(-4)}) for Student Roll: ${scannerStudentRoll}. Auto-reconciled.`
+                        );
+                      }, 900);
+                    }}
+                    className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    {isScanning ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        Scanning &amp; Verifying...
+                      </>
+                    ) : (
+                      <>
+                        <ScanLine className="w-3.5 h-3.5" />
+                        Execute QR Scan &amp; Reconcile
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

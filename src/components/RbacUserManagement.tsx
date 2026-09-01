@@ -11,6 +11,7 @@ interface RbacUserManagementProps {
   onSwitchUser?: (user: User) => void;
   onAddUser?: (user: Omit<User, 'id' | 'createdAt'>) => void;
   onChangePassword?: (userId: string, newPass: string) => void;
+  onOpenSecurityHub?: () => void;
 }
 
 export const RbacUserManagement: React.FC<RbacUserManagementProps> = ({
@@ -32,6 +33,7 @@ export const RbacUserManagement: React.FC<RbacUserManagementProps> = ({
   onSwitchUser,
   onAddUser,
   onChangePassword,
+  onOpenSecurityHub,
 }) => {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [showPassModal, setShowPassModal] = useState<User | null>(null);
@@ -196,12 +198,23 @@ export const RbacUserManagement: React.FC<RbacUserManagementProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={() => setShowAddUserModal(true)}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-colors"
-          >
-            <UserPlus className="w-4 h-4" /> Provision Staff Account
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenSecurityHub && (
+              <button
+                onClick={onOpenSecurityHub}
+                className="px-3.5 py-2 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-colors"
+              >
+                <Key className="w-3.5 h-3.5 text-indigo-400" />
+                <span>2FA &amp; Dual Sign-off Hub</span>
+              </button>
+            )}
+            <button
+              onClick={() => setShowAddUserModal(true)}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-colors"
+            >
+              <UserPlus className="w-4 h-4" /> Provision Staff Account
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

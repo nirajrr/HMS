@@ -450,3 +450,102 @@ export interface OnlinePoliceSubmissionReceipt {
   digitalSha256Checksum: string;
 }
 
+// ----------------------------------------------------
+// SECURITY REASSESSMENT, DOUBLE VERIFICATION & DATA INTEGRATION TYPES
+// ----------------------------------------------------
+
+export type TwoFactorMethod = 'TOTP_AUTHENTICATOR' | 'SMS_OTP' | 'EMAIL_OTP' | 'HARDWARE_KEY_FIDO2';
+
+export interface UserSecurityProfile {
+  userId: string;
+  twoFactorEnabled: boolean;
+  twoFactorMethod: TwoFactorMethod;
+  phoneNumberMasked?: string;
+  authenticatorAppLinked: boolean;
+  backupCodesRemaining: number;
+  lastVerifiedAt?: string;
+  ipLockEnabled: boolean;
+  trustedDevicesCount: number;
+  failedLoginAttempts: number;
+  sessionTimeoutMinutes: number;
+}
+
+export type DualSignoffAction = 
+  | 'FINANCIAL_REFUND' 
+  | 'HIGH_VALUE_EXPENSE' 
+  | 'TENANT_POLICE_CLEARANCE' 
+  | 'SYSTEM_FACTORY_RESET' 
+  | 'MASS_DATA_EXPORT' 
+  | 'ROOM_TARIFF_OVERRIDE'
+  | 'STUDENT_EXPULSION_VACATE';
+
+export interface DualSignoffRequest {
+  id: string;
+  actionType: DualSignoffAction;
+  title: string;
+  description: string;
+  amount?: number;
+  initiatedBy: string;
+  initiatorRole: UserRole;
+  initiatorTimestamp: string;
+  initiatorSignatureHash: string;
+  requiredApproverRole: UserRole;
+  secondApproverName?: string;
+  secondApproverRole?: UserRole;
+  secondApproverTimestamp?: string;
+  secondApproverOtpCode?: string;
+  secondApproverSignatureHash?: string;
+  status: 'PENDING_SECOND_VERIFICATION' | 'DOUBLE_VERIFIED_EXECUTED' | 'REJECTED' | 'EXPIRED';
+  targetEntityId?: string;
+  targetEntityName?: string;
+  integrityChecksum: string;
+}
+
+export type IntegrationCategory = 
+  | 'GOVERNMENT_POLICE_CCTNS' 
+  | 'COLLEGE_SIS_ERP' 
+  | 'BANKING_BBPS_PAYMENTS' 
+  | 'SMS_WHATSAPP_TELECOM' 
+  | 'IOT_BIOMETRIC_TURNSTILE' 
+  | 'CLOUD_ENCRYPTED_VAULT';
+
+export interface DataIntegrationConnector {
+  id: string;
+  name: string;
+  category: IntegrationCategory;
+  protocol: 'REST_WEBHOOK' | 'CCTNS_SOAP_API' | 'BBPS_NPCI_SWITCH' | 'WSS_SOCKET' | 'MQTT_IOT' | 'ENCRYPTED_SFTP';
+  endpointUrl: string;
+  authMethod: 'OAUTH2_BEARER' | 'MTLS_CERTIFICATE' | 'HMAC_SHA256_APIKEY' | 'IP_WHITELIST';
+  status: 'HEALTHY_CONNECTED' | 'SYNCING' | 'ATTENTION_REQUIRED' | 'SIMULATED_ACTIVE';
+  lastSyncTimestamp: string;
+  syncFrequency: string;
+  recordsSyncedTotal: number;
+  latencyMs: number;
+  encryptionStandard: string;
+  payloadSchemaVersion: string;
+  ipWhitelistRange: string;
+  autoSyncActive: boolean;
+  webhookSecretMasked: string;
+}
+
+export interface SecurityAuditAssessment {
+  overallSecurityScore: number; // 0 - 100
+  securityTier: 'TIER_1_ENTERPRISE_GRADE' | 'TIER_2_ENHANCED' | 'TIER_3_BASIC';
+  doubleVerificationComplianceScore: number;
+  dataIntegrationHealthScore: number;
+  encryptionStatus: string;
+  activeVulnerabilities: number;
+  lastPenTestDate: string;
+  sessionSecurity: {
+    sessionTimeoutMins: number;
+    enforceIpLock: boolean;
+    maxFailedAttempts: number;
+    mfaEnforcedRoles: UserRole[];
+  };
+  threatMonitoring: {
+    suspiciousLoginsBlocked24h: number;
+    integrityMismatchAlerts: number;
+    crossPlatformPacketsAudited: number;
+  };
+}
+
