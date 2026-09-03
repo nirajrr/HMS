@@ -3,7 +3,8 @@ import {
   MaintenanceRequest, ActivityLog, PoliceVerificationRecord, 
   FinancialAlert, Review, Notice, ResidentComplaint, 
   HousekeepingRecord, IdentityDocument, SyncEngineStatus, SyncPacket,
-  UserSecurityProfile, DualSignoffRequest, DataIntegrationConnector, SecurityAuditAssessment
+  UserSecurityProfile, DualSignoffRequest, DataIntegrationConnector, SecurityAuditAssessment,
+  DisciplinaryIncident, UserCredential, RoleRightDefinition, HardwareFingerprint, MachineLicense, StandalonePackagingStep
 } from './types';
 
 export const INITIAL_USERS: User[] = [
@@ -2402,6 +2403,512 @@ export const INITIAL_DATA_INTEGRATION_CONNECTORS: DataIntegrationConnector[] = [
     webhookSecretMasked: 'rsa_ssh_key_••••••••••••••••1109',
   },
 ];
+
+export const INITIAL_DISCIPLINARY_INCIDENTS: DisciplinaryIncident[] = [
+  {
+    id: 'disc_001',
+    incidentNumber: 'DISC-2026-0819',
+    studentId: 'std_001',
+    studentRoll: '2023-CS-041',
+    studentName: 'Aarav Sharma',
+    roomNumber: '101',
+    bedNumber: 'Bed-1',
+    department: 'Computer Science & Engineering',
+    guardianName: 'Ramesh Sharma',
+    guardianMobile: '9876501234',
+    category: 'CURFEW_LATE_ENTRY',
+    severity: 'MODERATE_INFRACTION',
+    title: 'Unauthorized Late Night Entry past 10:00 PM Curfew without Outpass',
+    matterDescription: 'The student returned to the hostel premises at 11:45 PM without submitting a prior digital outpass or warden approval, attempting to bypass biometric gate logs. Upon questioning by Chief Security Supervisor, resident failed to present valid emergency justification.',
+    incidentDate: '2026-08-25',
+    incidentTime: '23:45 IST',
+    location: 'Main Hostel Security Gate & Biometric Turnstile A',
+    fineAmount: 500,
+    actionProposed: 'WRITTEN_WARNING',
+    reportedBy: 'Vikram Singh (Hostel Warden)',
+    witnessInfo: 'Night Guard Ram Prakash & CCTV Camera #04 Footage',
+    smsStatus: 'DELIVERED',
+    whatsAppStatus: 'READ',
+    smsMessageContent: 'HOSTEL ALERT: Respected Ramesh Sharma, your ward Aarav Sharma (Roll: 2023-CS-041, Room 101) violated curfew on 25-Aug at 23:45 IST without outpass. Disciplinary warning issued. Ph: 011-28910293 - Chief Warden.',
+    whatsAppMessageContent: `*OFFICIAL DISCIPLINARY NOTICE - NATIVE NEST HOSTEL*
+⚠️ *Incident Notice Ref:* DISC-2026-0819
+📅 *Date & Time:* 25-Aug-2026 at 23:45 IST
+
+Respected *Shri Ramesh Sharma Ji*,
+This is to formally notify you regarding your ward:
+👤 *Student:* Aarav Sharma (Roll: 2023-CS-041)
+🏢 *Room & Bed:* Room 101, Bed-1
+
+*Matter / Infraction Summary:*
+Unauthorized entry past mandatory hostel curfew (10:00 PM) at 11:45 PM without valid emergency outpass or Warden clearance.
+
+*Action Imposed:* First Formal Written Disciplinary Warning + ₹500 gate violation fine.
+Kindly counsel your ward to observe hostel regulations strictly.
+
+📞 *Warden Helpline:* +91 98765 43210
+🏛️ *Hostel Administration Office*`,
+    dispatchedAt: '2026-08-26 09:15:00',
+    dltTemplateId: 'DLT-TE-11071689201',
+    whatsAppMessageId: 'wamid.HBgLOTE5ODc2NTAxMjM0FQIAERgSMzAyOTQxODk5Mzk0',
+    sha256AuditHash: 'SHA256:d8a9b2c3e4f5012389abcdef4567890123456789abcdef0123456789abcdef01',
+    parentAcknowledged: true,
+    parentAcknowledgmentNotes: 'Guardian Ramesh Sharma called Warden at 10:30 AM on 26-Aug. Acknowledged curfew infraction and assured student adherence.',
+    status: 'GUARDIAN_RESOLVED',
+  },
+  {
+    id: 'disc_002',
+    incidentNumber: 'DISC-2026-0824',
+    studentId: 'std_004',
+    studentRoll: '2024-EE-019',
+    studentName: 'Devendra Patel',
+    roomNumber: '104',
+    bedNumber: 'Bed-1',
+    department: 'Electrical Engineering',
+    guardianName: 'Mukesh Patel',
+    guardianMobile: '9876504567',
+    category: 'NOISE_DISTURBANCE',
+    severity: 'MINOR_WARNING',
+    title: 'High-Decibel Sound System & Quiet Hours Violation during Midnight Study Hours',
+    matterDescription: 'The student was operating high-powered subwoofers and loudspeakers at 01:30 AM in Room 104, disturbing adjacent rooms during mid-semester examination preparatory period. Repeated floor-in-charge verbal requests were ignored before formal intervention.',
+    incidentDate: '2026-08-28',
+    incidentTime: '01:30 IST',
+    location: 'Block A, First Floor Corridor (Outside Room 104)',
+    fineAmount: 250,
+    actionProposed: 'WRITTEN_WARNING',
+    reportedBy: 'Anita R. Kulkarni (Floor Proctor)',
+    witnessInfo: 'Written complaints by 4 residents of Rooms 103 and 105',
+    smsStatus: 'DELIVERED',
+    whatsAppStatus: 'DELIVERED',
+    smsMessageContent: 'HOSTEL ALERT: Respected Mukesh Patel, your ward Devendra Patel (Roll: 2024-EE-019, Room 104) received a warning for quiet-hours noise violation on 28-Aug. Please ensure compliance. Warden: 011-28910293.',
+    whatsAppMessageContent: `*OFFICIAL DISCIPLINARY NOTICE - NATIVE NEST HOSTEL*
+⚠️ *Incident Notice Ref:* DISC-2026-0824
+📅 *Date & Time:* 28-Aug-2026 at 01:30 IST
+
+Respected *Shri Mukesh Patel Ji*,
+This is to formally notify you regarding your ward:
+👤 *Student:* Devendra Patel (Roll: 2024-EE-019)
+🏢 *Room & Bed:* Room 104, Bed-1
+
+*Matter / Infraction Summary:*
+Violation of mandatory quiet hours (11:00 PM - 06:00 AM) by playing high-decibel amplified audio during examination prep week.
+
+*Action Imposed:* Formal Advisory Warning recorded on student profile.
+Kindly advise your ward to maintain mutual discipline.
+
+📞 *Warden Helpline:* +91 98765 43210
+🏛️ *Hostel Administration Office*`,
+    dispatchedAt: '2026-08-28 08:30:00',
+    dltTemplateId: 'DLT-TE-11071689202',
+    whatsAppMessageId: 'wamid.HBgLOTE5ODc2NTA0NTY3FQIAERgSMzAyOTQxODk5Mzk1',
+    sha256AuditHash: 'SHA256:b1c2d3e4f5012389abcdef4567890123456789abcdef0123456789abcdef02',
+    parentAcknowledged: false,
+    status: 'NOTICE_SERVED',
+  },
+  {
+    id: 'disc_003',
+    incidentNumber: 'DISC-2026-0829',
+    studentId: 'std_009',
+    studentRoll: '2021-IT-003',
+    studentName: 'Manish Pandey',
+    roomNumber: '202',
+    bedNumber: 'Bed-1',
+    department: 'Information Technology',
+    guardianName: 'Sanjay Pandey',
+    guardianMobile: '9876509012',
+    category: 'UNAUTHORIZED_GUEST',
+    severity: 'MAJOR_VIOLATION',
+    title: 'Hosting Non-Resident Overnight Guest without Visitor Registration or Gate Entry Form',
+    matterDescription: 'During surprise room inspection at 06:30 AM, an unregistered outside individual was found staying overnight in Room 202 without prior gate visitor pass or warden clearance, violating Section 12 of the Hostel Residence Regulations.',
+    incidentDate: '2026-08-29',
+    incidentTime: '06:30 IST',
+    location: 'Room 202 (B-Block Studio Suite)',
+    fineAmount: 2000,
+    actionProposed: 'GUARDIAN_SUMMONS',
+    reportedBy: 'Dr. Rajiv Malhotra (Chief Warden)',
+    witnessInfo: 'Inspection Team: Chief Warden & Security Supervisor',
+    smsStatus: 'DELIVERED',
+    whatsAppStatus: 'DELIVERED',
+    smsMessageContent: 'URGENT HOSTEL NOTICE: Shri Sanjay Pandey, your ward Manish Pandey (Roll: 2021-IT-003) committed a major violation by hosting unauthorized overnight guest in Room 202. You are requested to contact Chief Warden urgently at 011-28910293.',
+    whatsAppMessageContent: `*URGENT DISCIPLINARY CITATION - NATIVE NEST HOSTEL*
+🚨 *Incident Notice Ref:* DISC-2026-0829
+📅 *Date & Time:* 29-Aug-2026 at 06:30 IST
+
+Respected *Shri Sanjay Pandey Ji*,
+This is an urgent formal communication regarding your ward:
+👤 *Student:* Manish Pandey (Roll: 2021-IT-003)
+🏢 *Room & Bed:* Room 202, Bed-1
+
+*Matter / Infraction Summary:*
+Major violation of hostel security code: Accommodating an unregistered outside guest overnight inside hostel room without security desk verification or visitor pass.
+
+*Action Imposed:* ₹2,000 security penalty & Guardian Presence requested for Proctorial Board review.
+
+Please connect with Chief Warden office at your earliest convenience.
+📞 *Chief Warden Direct Line:* +91 98765 43210
+🏛️ *Hostel Administration & Proctorial Board*`,
+    dispatchedAt: '2026-08-29 09:00:00',
+    dltTemplateId: 'DLT-TE-11071689203',
+    whatsAppMessageId: 'wamid.HBgLOTE5ODc2NTA5MDEyFQIAERgSMzAyOTQxODk5Mzk2',
+    sha256AuditHash: 'SHA256:e3f4a5b6c7012389abcdef4567890123456789abcdef03',
+    parentAcknowledged: false,
+    status: 'ESCALATED_CHIEF_WARDEN',
+  }
+];
+
+// ----------------------------------------------------
+// USER LOGIN CREDENTIALS & ROLE RIGHTS ACCESS MATRIX
+// ----------------------------------------------------
+
+export const INITIAL_USER_CREDENTIALS: UserCredential[] = [
+  {
+    userId: 'usr_admin',
+    loginId: 'admin_malhotra',
+    passwordHash: '$2a$12$e89f81a7b4528cd902194bcf9301948df920194bc029384719284710293847a1',
+    plainPasswordHint: 'Admin@2026#Secure',
+    role: 'SUPER_ADMIN',
+    fullName: 'Dr. Rajiv Malhotra',
+    email: 'admin@hostel-erp.edu',
+    department: 'Chief Warden & Administration',
+    accessibleTabs: [
+      'SYNC_DUAL', 'SECURITY', 'REPORTS', 'OVERVIEW', 'MASTER_ROOMS', 'STUDENTS', 
+      'ROOMS', 'MESS', 'FINANCE', 'MAINTENANCE', 'COMPLAINTS', 'POLICE', 'RBAC', 'AUDIT', 'REVIEWS_NOTICES'
+    ],
+    restrictedActions: [],
+    failedLoginAttempts: 0,
+    isAccountLocked: false,
+    isTwoFactorEnabled: true,
+    twoFactorSecret: 'JBSWY3DPEHPK3PXP',
+    lastLoginTimestamp: '2026-09-01 09:15:22 IST'
+  },
+  {
+    userId: 'usr_supervisor',
+    loginId: 'warden_vikram',
+    passwordHash: '$2a$12$b1c2d3e4f5012389abcdef4567890123456789abcdef0123456789abcdef02',
+    plainPasswordHint: 'Warden@Hostel99',
+    role: 'HOSTEL_WARDEN',
+    fullName: 'Vikram Singh',
+    email: 'supervisor@hostel-erp.edu',
+    department: 'Facility Safety & Operations',
+    accessibleTabs: [
+      'SYNC_DUAL', 'OVERVIEW', 'MASTER_ROOMS', 'STUDENTS', 'ROOMS', 
+      'MAINTENANCE', 'COMPLAINTS', 'POLICE', 'REVIEWS_NOTICES', 'REPORTS'
+    ],
+    restrictedActions: ['BANK_ACCOUNT_DELETE', 'SYSTEM_CORE_RESET', 'ADMIN_USER_DELETE'],
+    failedLoginAttempts: 0,
+    isAccountLocked: false,
+    isTwoFactorEnabled: true,
+    lastLoginTimestamp: '2026-08-31 18:45:10 IST'
+  },
+  {
+    userId: 'usr_clerk',
+    loginId: 'clerk_suresh',
+    passwordHash: '$2a$12$c7a8b9f1d02e3456789abcdef0123456789abcdef0123456789abcdef0123456',
+    plainPasswordHint: 'Clerk@Admit2026',
+    role: 'HEAD_CLERK',
+    fullName: 'Suresh Verma',
+    email: 'clerk@hostel-erp.edu',
+    department: 'Student Admissions & Allotment Office',
+    accessibleTabs: [
+      'STUDENTS', 'ROOMS', 'POLICE', 'REVIEWS_NOTICES', 'REPORTS'
+    ],
+    restrictedActions: ['BANK_TREASURY_CONFIG', 'MAINTENANCE_HIGH_COST_APPROVE', 'RBAC_MANAGE'],
+    failedLoginAttempts: 0,
+    isAccountLocked: false,
+    isTwoFactorEnabled: false,
+    lastLoginTimestamp: '2026-09-01 08:30:45 IST'
+  },
+  {
+    userId: 'usr_accountant',
+    loginId: 'anita_mess_acct',
+    passwordHash: '$2a$12$d8a9b2c3e4f5012389abcdef4567890123456789abcdef0123456789abcdef01',
+    plainPasswordHint: 'Mess@Ledger123',
+    role: 'MESS_ACCOUNTANT',
+    fullName: 'Anita R. Kulkarni',
+    email: 'mess.accountant@hostel-erp.edu',
+    department: 'Dining Hall & Mess Operations',
+    accessibleTabs: [
+      'MESS', 'FINANCE', 'REPORTS', 'REVIEWS_NOTICES'
+    ],
+    restrictedActions: ['STUDENT_DELETE', 'ROOM_SWAP_OVERRIDE', 'POLICE_CCTNS_SUBMIT'],
+    failedLoginAttempts: 0,
+    isAccountLocked: false,
+    isTwoFactorEnabled: false,
+    lastLoginTimestamp: '2026-09-01 10:00:15 IST'
+  },
+  {
+    userId: 'usr_student',
+    loginId: 'aarav_2023cs',
+    passwordHash: '$2a$12$e3f4a5b6c7012389abcdef4567890123456789abcdef03',
+    plainPasswordHint: 'Student@HostelPass1',
+    role: 'STUDENT',
+    fullName: 'Aarav Sharma',
+    email: 'aarav.sharma@hostel-erp.edu',
+    department: 'Computer Science & Engineering',
+    accessibleTabs: [
+      'ROOMS', 'MESS', 'COMPLAINTS', 'REVIEWS_NOTICES'
+    ],
+    restrictedActions: [
+      'STUDENT_MANAGE_ALL', 'FINANCE_VIEW_ALL', 'POLICE_VERIFICATION_MANAGE', 
+      'ROOM_CONFIG_MASTER', 'RBAC_SECURITY_SETTINGS', 'EXPORT_SYSTEM_DATA'
+    ],
+    failedLoginAttempts: 0,
+    isAccountLocked: false,
+    isTwoFactorEnabled: false,
+    lastLoginTimestamp: '2026-09-01 10:08:50 IST'
+  }
+];
+
+export const INITIAL_ROLE_RIGHTS: RoleRightDefinition[] = [
+  {
+    role: 'SUPER_ADMIN',
+    roleDisplayName: 'Super Administrator / Chief Executive',
+    description: 'Unrestricted master sovereignty over all financial ledgers, room inventories, staff credentials, and security systems.',
+    colorBadge: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
+    accessibleNavTabs: [
+      { id: 'SYNC_DUAL', name: 'Cross-Platform Sync', permission: 'FULL_CONTROL' },
+      { id: 'OVERVIEW', name: 'Executive Overview', permission: 'FULL_CONTROL' },
+      { id: 'MASTER_ROOMS', name: 'Master Room & Bed Config', permission: 'FULL_CONTROL' },
+      { id: 'STUDENTS', name: 'Resident Directory & Misconduct', permission: 'FULL_CONTROL' },
+      { id: 'ROOMS', name: 'Live Occupancy & Room Swapping', permission: 'FULL_CONTROL' },
+      { id: 'MESS', name: 'Mess Billing & Collections', permission: 'FULL_CONTROL' },
+      { id: 'FINANCE', name: 'Multi-Bank Treasury & UPI QR', permission: 'FULL_CONTROL' },
+      { id: 'MAINTENANCE', name: 'Housekeeping & 3/4 Quorum', permission: 'FULL_CONTROL' },
+      { id: 'COMPLAINTS', name: 'Resident Grievance Redressal', permission: 'FULL_CONTROL' },
+      { id: 'POLICE', name: 'Police Form-A & Verification', permission: 'FULL_CONTROL' },
+      { id: 'SECURITY', name: 'Security Audit & 2FA Hub', permission: 'FULL_CONTROL' },
+      { id: 'RBAC', name: 'Staff RBAC & Right-wise Control', permission: 'FULL_CONTROL' },
+      { id: 'REPORTS', name: 'Executive BI Reports Engine', permission: 'FULL_CONTROL' },
+      { id: 'AUDIT', name: 'Immutable SHA-256 Audit Trail', permission: 'FULL_CONTROL' },
+      { id: 'REVIEWS_NOTICES', name: 'Feedback & Notice Board', permission: 'FULL_CONTROL' }
+    ],
+    deniedModules: [],
+    maxHighValueApprovalLimit: 10000000,
+    canManageUsers: true,
+    canExportPoliceData: true,
+    canApproveRoomSwap: true,
+    canCollectFees: true
+  },
+  {
+    role: 'HOSTEL_WARDEN',
+    roleDisplayName: 'Hostel Chief Warden & Proctor',
+    description: 'Operational authority over resident discipline, admissions, room swaps, complaints, maintenance approvals, and police compliance.',
+    colorBadge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+    accessibleNavTabs: [
+      { id: 'SYNC_DUAL', name: 'Cross-Platform Sync', permission: 'READ_WRITE' },
+      { id: 'OVERVIEW', name: 'Executive Overview', permission: 'READ_ONLY' },
+      { id: 'MASTER_ROOMS', name: 'Master Room & Bed Config', permission: 'READ_WRITE' },
+      { id: 'STUDENTS', name: 'Resident Directory & Misconduct', permission: 'FULL_CONTROL' },
+      { id: 'ROOMS', name: 'Live Occupancy & Room Swapping', permission: 'FULL_CONTROL' },
+      { id: 'MAINTENANCE', name: 'Housekeeping & 3/4 Quorum', permission: 'FULL_CONTROL' },
+      { id: 'COMPLAINTS', name: 'Resident Grievance Redressal', permission: 'FULL_CONTROL' },
+      { id: 'POLICE', name: 'Police Form-A & Verification', permission: 'FULL_CONTROL' },
+      { id: 'REPORTS', name: 'Executive BI Reports Engine', permission: 'READ_ONLY' },
+      { id: 'REVIEWS_NOTICES', name: 'Feedback & Notice Board', permission: 'FULL_CONTROL' }
+    ],
+    deniedModules: ['FINANCE', 'SECURITY', 'RBAC', 'AUDIT'],
+    maxHighValueApprovalLimit: 25000,
+    canManageUsers: false,
+    canExportPoliceData: true,
+    canApproveRoomSwap: true,
+    canCollectFees: false
+  },
+  {
+    role: 'HEAD_CLERK',
+    roleDisplayName: 'Head Clerk (Admissions & Records)',
+    description: 'Manages student admission documents, Aadhaar/PAN vaults, bed allotments, and statutory police tenant verification forms.',
+    colorBadge: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+    accessibleNavTabs: [
+      { id: 'STUDENTS', name: 'Resident Directory & Misconduct', permission: 'READ_WRITE' },
+      { id: 'ROOMS', name: 'Live Occupancy & Bed Allotment', permission: 'READ_WRITE' },
+      { id: 'POLICE', name: 'Police Form-A & Verification', permission: 'READ_WRITE' },
+      { id: 'REVIEWS_NOTICES', name: 'Feedback & Notice Board', permission: 'READ_WRITE' },
+      { id: 'REPORTS', name: 'Admissions & Occupancy Reports', permission: 'READ_ONLY' }
+    ],
+    deniedModules: ['FINANCE', 'MESS', 'SECURITY', 'RBAC', 'AUDIT', 'MAINTENANCE'],
+    maxHighValueApprovalLimit: 5000,
+    canManageUsers: false,
+    canExportPoliceData: true,
+    canApproveRoomSwap: false,
+    canCollectFees: true
+  },
+  {
+    role: 'MESS_ACCOUNTANT',
+    roleDisplayName: 'Mess Accountant & Bursar',
+    description: 'Manages mess billing, rebate deductions, daily diet ledger, and payment reconciliation via dynamic UPI QR codes.',
+    colorBadge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+    accessibleNavTabs: [
+      { id: 'MESS', name: 'Mess Billing & Ledger', permission: 'FULL_CONTROL' },
+      { id: 'FINANCE', name: 'Multi-Bank Treasury & Settlements', permission: 'READ_WRITE' },
+      { id: 'REPORTS', name: 'Financial Defaulters & Mess Audit', permission: 'READ_ONLY' },
+      { id: 'REVIEWS_NOTICES', name: 'Food Quality Feedback', permission: 'READ_WRITE' }
+    ],
+    deniedModules: ['MASTER_ROOMS', 'POLICE', 'MAINTENANCE', 'COMPLAINTS', 'SECURITY', 'RBAC', 'AUDIT'],
+    maxHighValueApprovalLimit: 15000,
+    canManageUsers: false,
+    canExportPoliceData: false,
+    canApproveRoomSwap: false,
+    canCollectFees: true
+  },
+  {
+    role: 'STUDENT',
+    roleDisplayName: 'Resident Scholar / Student Ward',
+    description: 'Self-service resident portal for room details, personal mess statements, grievance submission, and cleaning consensus remarks.',
+    colorBadge: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
+    accessibleNavTabs: [
+      { id: 'ROOMS', name: 'My Room & Bed Details', permission: 'READ_ONLY' },
+      { id: 'MESS', name: 'My Mess Account & Diet Ledger', permission: 'READ_ONLY' },
+      { id: 'COMPLAINTS', name: 'Lodge Maintenance Grievance', permission: 'READ_WRITE' },
+      { id: 'REVIEWS_NOTICES', name: 'Notice Board & Mess Reviews', permission: 'READ_WRITE' }
+    ],
+    deniedModules: ['SYNC_DUAL', 'OVERVIEW', 'MASTER_ROOMS', 'STUDENTS', 'FINANCE', 'MAINTENANCE', 'POLICE', 'SECURITY', 'RBAC', 'REPORTS', 'AUDIT'],
+    maxHighValueApprovalLimit: 0,
+    canManageUsers: false,
+    canExportPoliceData: false,
+    canApproveRoomSwap: false,
+    canCollectFees: false
+  }
+];
+
+// ----------------------------------------------------
+// MACHINE HARDWARE FINGERPRINT & NODE-LOCK LICENSING
+// ----------------------------------------------------
+
+export const INITIAL_MACHINE_FINGERPRINT: HardwareFingerprint = {
+  machineHwid: 'HWID-88A2-771B-94E0-55C3',
+  motherboardUuid: '4C4C4544-0050-4E10-8033-B2C04F383332',
+  cpuMicrocodeId: 'BFEBFBFF000906EA-11thGen-Intel-Core-i7-11800H',
+  primaryMacAddress: '3C:7C:3F:8A:21:4E',
+  diskVolumeSerial: 'VOL-8492-C02A-E810',
+  osHostName: 'DESKTOP-WARDEN-OFFICE-01',
+  osPlatform: 'WINDOWS_X64',
+  totalRamGb: 32,
+  generatedTimestamp: '2026-09-01 10:00:00 IST',
+  hardwareHashSha256: 'e89f81a7b4528cd902194bcf9301948df920194bc029384719284710293847a1'
+};
+
+export const SIMULATED_CLONED_MACHINE_FINGERPRINT: HardwareFingerprint = {
+  machineHwid: 'HWID-FA91-33B4-8802-99D7',
+  motherboardUuid: '5A5A5544-0099-3F20-9011-C3D05E494443',
+  cpuMicrocodeId: 'AFEAFBFF000805BA-AMD-Ryzen-7-5800X-8Core',
+  primaryMacAddress: '78:4F:43:9B:10:2A',
+  diskVolumeSerial: 'VOL-1102-B83C-F901',
+  osHostName: 'UNAUTHORIZED-LAPTOP-COPY-02',
+  osPlatform: 'WINDOWS_X64',
+  totalRamGb: 16,
+  generatedTimestamp: '2026-09-01 10:05:00 IST',
+  hardwareHashSha256: 'f7c8d9e0a1b234567890abcdef1234567890abcdef1234567890abcdef123456'
+};
+
+export const INITIAL_MACHINE_LICENSE: MachineLicense = {
+  licenseKey: 'NVNEST-ENT-88A2-771B-94E0-55C3-NODE-LOCKED',
+  organizationName: 'Native Nest Premium Residence & Campus ERP',
+  edition: 'ENTERPRISE_STANDALONE_NODE_LOCKED',
+  boundHwid: 'HWID-88A2-771B-94E0-55C3',
+  boundHostName: 'DESKTOP-WARDEN-OFFICE-01',
+  activationDate: '2026-01-15',
+  expiryDate: '2029-12-31',
+  maxConcurrentUsers: 25,
+  antiTamperSeal: 'RSA-4096-SEAL:f892a0194bcf9301948df920194bc029384719284710293847a1098472910482',
+  status: 'ACTIVE_BOUND',
+  allowedOfflineDays: 365,
+  lastHardwareScanTimestamp: '2026-09-01 10:09:00 IST'
+};
+
+// ----------------------------------------------------
+// STANDALONE PACKAGING BLUEPRINT & STEP-BY-STEP RECIPE
+// ----------------------------------------------------
+
+export const STANDALONE_PACKAGING_STEPS: StandalonePackagingStep[] = [
+  {
+    stepNumber: 1,
+    title: 'Initialize Desktop Shell Dependencies (Electron + SQLite Native)',
+    category: 'ELECTRON_WINDOWS',
+    command: 'npm install --save-dev electron electron-builder @types/electron better-sqlite3',
+    description: 'Installs the native OS runtime container, native C++ bindings for local offline database persistence, and packaging tooling for single-file installer distribution.',
+    fileName: 'package.json',
+    codeSnippet: `"scripts": {
+  "build": "vite build",
+  "electron:dev": "concurrently \\"vite\\" \\"electron .\\"",
+  "electron:build": "vite build && electron-builder --win nsis --x64"
+}`
+  },
+  {
+    stepNumber: 2,
+    title: 'Embed Hardware Fingerprinting & Node-Locking Kernel',
+    category: 'NODE_LOCK_BINDER',
+    command: 'npm install node-machine-id systeminformation crypto-js',
+    description: 'Reads the motherboard BIOS UUID, CPU ID, and Disk Serial directly from the OS WMI/sysfs to calculate the tamper-proof HWID hash upon startup.',
+    fileName: 'electron/main.ts',
+    codeSnippet: `import { machineIdSync } from 'node-machine-id';
+import * as crypto from 'crypto';
+
+export function getHardwareFingerprint(): string {
+  const rawId = machineIdSync({ original: true });
+  return 'HWID-' + crypto.createHash('sha256').update(rawId + 'NVNEST_SECRET_SALT').digest('hex').substring(0, 16).toUpperCase();
+}`
+  },
+  {
+    stepNumber: 3,
+    title: 'Implement Local Embedded SQLite / IndexedDB Database Engine',
+    category: 'SQLITE_DATABASE',
+    command: 'npm install better-sqlite3 sqlite3 kysely',
+    description: 'Replaces cloud API dependencies with a zero-latency embedded encrypted SQLite database (`hostel_erp.db`) stored in the local OS AppData folder with AES-256 cipher.',
+    fileName: 'src/db/localDb.ts',
+    codeSnippet: `import Database from 'better-sqlite3';
+import path from 'path';
+import { app } from 'electron';
+
+const dbPath = path.join(app.getPath('userData'), 'hostel_erp_encrypted.db');
+export const db = new Database(dbPath);
+db.pragma('journal_mode = WAL');
+db.pragma('key = "AES256_LOCAL_STORAGE_PASSPHRASE"');`
+  },
+  {
+    stepNumber: 4,
+    title: 'Configure Electron Builder Single-PC Hardware Bound Installer',
+    category: 'INSTALLER_BUILD',
+    command: 'npx electron-builder --win --x64 --config electron-builder.json',
+    description: 'Generates a signed standalone executable (`NativeNest-Setup-x64.exe` or portable `.exe`) with NSIS installer script that binds to the machine upon installation.',
+    fileName: 'electron-builder.json',
+    codeSnippet: `{
+  "appId": "com.nativenest.hostelerp.desktop",
+  "productName": "NativeNest Hostel ERP",
+  "directories": { "output": "dist-electron" },
+  "win": {
+    "target": ["nsis", "portable"],
+    "icon": "public/icon.png",
+    "requestedExecutionLevel": "asInvoker"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": true,
+    "allowToChangeInstallationDirectory": true
+  }
+}`
+  },
+  {
+    stepNumber: 5,
+    title: 'Alternate Ultra-Lightweight Build via Tauri (Rust Engine)',
+    category: 'TAURI_RUST',
+    command: 'cargo install tauri-cli && npm run tauri build',
+    description: 'Alternative option for memory-constrained computers: compiles to a 8MB native binary with zero Chromium overhead and direct OS webview rendering.',
+    fileName: 'src-tauri/tauri.conf.json',
+    codeSnippet: `{
+  "package": {
+    "productName": "NativeNestHostelERP",
+    "version": "2.4.0"
+  },
+  "tauri": {
+    "bundle": {
+      "active": true,
+      "targets": ["msi", "nsis", "appimage", "deb"]
+    }
+  }
+}`
+  }
+];
+
+
 
 
 

@@ -236,6 +236,56 @@ A room with 4 assigned residents logs a cleaning dispute for their attached west
 
 ---
 
+### 4.5 Few-Shot Exemplar: Automated Misconduct Guardian Notification Composer & Dispatcher (WhatsApp & SMS)
+
+#### Input Context:
+```json
+{
+  "action": "COMPOSE_GUARDIAN_MISCONDUCT_NOTICE",
+  "studentId": "std_01",
+  "studentName": "Aarav Sharma",
+  "studentRoll": "2023CS101",
+  "roomNumber": "101",
+  "guardianName": "Rajesh Sharma",
+  "guardianMobile": "9876543210",
+  "category": "CURFEW_VIOLATION",
+  "severity": "MODERATE",
+  "rawIncidentNotes": "Entered hostel at 11:45 PM past 9:30 PM curfew without prior warden gate pass. Gate biometric flagged late entry.",
+  "sanction": "Fine of ₹500 imposed and mandatory parental acknowledgment required."
+}
+```
+
+#### CoT Reasoning:
+```markdown
+1. Validate Guardian phone format (+91 10-digit Indian standard mobile).
+2. Translate raw incident notes into formal, legally compliant institutional notice wording.
+3. Generate TRAI DLT-approved SMS payload (< 160 chars) adhering to registered template NVNEST-DISC-01.
+4. Generate rich WhatsApp message formatted with bold parameters and Chief Warden contact details.
+5. Compute SHA-256 tamper-proof audit verification seal over payload and timestamp.
+```
+
+#### Model Output:
+```json
+{
+  "incidentNumber": "DISC-2026-089",
+  "composedMatter": "Dear Parent/Guardian, this is an official notice regarding resident Aarav Sharma (Roll: 2023CS101, Room: 101). On 01/09/2026 at 23:45 IST, resident entered the premises after official curfew hours (21:30) without an authorized warden exit gate pass. A formal disciplinary sanction of ₹500 fine has been recorded. Kindly acknowledge receipt of this advisory.",
+  "whatsAppPayload": {
+    "recipient": "+919876543210",
+    "template": "guardian_misconduct_alert_v2",
+    "deliveryChannel": "WHATSAPP_CLOUD_API"
+  },
+  "smsPayload": {
+    "senderId": "NVNEST",
+    "dltTemplateId": "DLT-1107-DISC-01",
+    "text": "NATIVENEST: Curfew notice issued for Aarav Sharma (Room 101). ₹500 fine logged. Pls check WhatsApp or call warden at 9425012345."
+  },
+  "sha256AuditSeal": "c7a8b9f1d02e3456789abcdef0123456789abcdef0123456789abcdef0123456",
+  "dispatchStatus": "QUEUED_FOR_BROADCAST"
+}
+```
+
+---
+
 ## 5. Structured Output Schemas & Validation Guardrails
 
 To guarantee type safety and runtime compatibility with TypeScript interfaces, all AI and LLM outputs in this platform conform to the following JSON Schema definitions:
@@ -276,6 +326,40 @@ To guarantee type safety and runtime compatibility with TypeScript interfaces, a
     "cryptographicAuditSeal": { "type": "string" }
   },
   "required": ["requestId", "firstApprover", "secondApprover", "totpTokenVerified", "executionStatus", "cryptographicAuditSeal"]
+}
+```
+
+### 5.3 Guardian Misconduct Notice & WhatsApp/SMS Dispatch Schema
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GuardianMisconductNotice",
+  "type": "object",
+  "properties": {
+    "incidentNumber": { "type": "string", "pattern": "^DISC-[0-9]{4}-[0-9]{3,}$" },
+    "studentId": { "type": "string" },
+    "studentName": { "type": "string" },
+    "guardianMobile": { "type": "string", "pattern": "^[0-9]{10}$" },
+    "category": { 
+      "type": "string",
+      "enum": [
+        "CURFEW_VIOLATION", "UNAUTHORIZED_GUEST", "SUBSTANCE_ALCOHOL", 
+        "NOISE_DISTURBANCE", "PROPERTY_DAMAGE", "RAGGING_BULLYING", 
+        "INSUBORDINATION", "MESS_DISCIPLINE", "ELECTRICAL_SAFETY", "OTHER"
+      ]
+    },
+    "severity": { "type": "string", "enum": ["LOW", "MODERATE", "HIGH", "CRITICAL"] },
+    "matterDescription": { "type": "string", "minLength": 10 },
+    "actionTaken": { "type": "string" },
+    "whatsAppStatus": { "type": "string", "enum": ["DELIVERED", "READ", "SENT", "FAILED"] },
+    "smsStatus": { "type": "string", "enum": ["DELIVERED", "SENT", "FAILED"] },
+    "sha256AuditHash": { "type": "string" },
+    "parentAcknowledged": { "type": "boolean" }
+  },
+  "required": [
+    "incidentNumber", "studentId", "studentName", "guardianMobile", 
+    "category", "severity", "matterDescription", "whatsAppStatus", "smsStatus", "sha256AuditHash"
+  ]
 }
 ```
 

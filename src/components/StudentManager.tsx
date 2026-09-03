@@ -1,15 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { Student, Room } from '../types';
+import { Student, Room, DisciplinaryIncident, MisconductCategory, MisconductSeverity } from '../types';
 import { 
   Search, Plus, UserPlus, Filter, ShieldCheck, ArrowLeftRight, CreditCard, 
   Eye, Edit3, Trash2, CheckCircle2, AlertCircle, Phone, Mail, MapPin, 
   Car, FileText, Download, Building2, AlertOctagon, FolderLock, FileCheck, Check,
-  Bell, Send, CheckSquare, Square, Smartphone, Zap, Sparkles, MessageSquare, X
+  Bell, Send, CheckSquare, Square, Smartphone, Zap, Sparkles, MessageSquare, X,
+  ShieldAlert, AlertTriangle, ExternalLink, Printer, Scale, RefreshCw, MessageCircle
 } from 'lucide-react';
 
 interface StudentManagerProps {
   students?: Student[];
   rooms?: Room[];
+  disciplinaryIncidents?: DisciplinaryIncident[];
   onAddStudent?: (student: Omit<Student, 'id'>) => void;
   onUpdateStudent?: (student: Student) => void;
   onDeleteStudent?: (studentId: string) => void;
@@ -20,12 +22,15 @@ interface StudentManagerProps {
   onOpenMessPayModal?: (student: Student) => void;
   onOpenDocumentVault?: (student: Student) => void;
   onOpenComplaintModal?: (student: Student) => void;
+  onOpenMisconductModal?: (student?: Student) => void;
+  onUpdateIncident?: (incident: DisciplinaryIncident) => void;
   onTriggerSync?: (source: 'EXE_DESKTOP' | 'APK_MOBILE', action: string, details: string) => void;
 }
 
 export const StudentManager: React.FC<StudentManagerProps> = ({
   students = [],
   rooms = [],
+  disciplinaryIncidents = [],
   onAddStudent,
   onUpdateStudent,
   onDeleteStudent,
@@ -36,8 +41,11 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   onOpenMessPayModal,
   onOpenDocumentVault,
   onOpenComplaintModal,
+  onOpenMisconductModal,
+  onUpdateIncident,
   onTriggerSync,
 }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'DIRECTORY' | 'DISCIPLINARY'>('DIRECTORY');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState('ALL');
   const [selectedYear, setSelectedYear] = useState('ALL');
@@ -46,6 +54,14 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [selectedStudentDetail, setSelectedStudentDetail] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+
+  // Disciplinary Filters & Incident Viewer Modal
+  const [selectedIncidentDetail, setSelectedIncidentDetail] = useState<DisciplinaryIncident | null>(null);
+  const [discFilterCategory, setDiscFilterCategory] = useState<string>('ALL');
+  const [discFilterSeverity, setDiscFilterSeverity] = useState<string>('ALL');
+  const [discFilterStatus, setDiscFilterStatus] = useState<string>('ALL');
+  const [discSearchTerm, setDiscSearchTerm] = useState('');
+
 
   // Multi-select & Bulk Notification State
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
@@ -94,6 +110,39 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   const selectedStudents = useMemo(() => {
     return students.filter((s) => selectedStudentIds.includes(s.id));
   }, [students, selectedStudentIds]);
+
+  // Filtered Disciplinary Incidents Memo
+  const filteredIncidents = useMemo(() => {
+    return disciplinaryIncidents.filter((inc) => {
+      const matchSearch =
+        discSearchTerm === '' ||
+        inc.studentName.toLowerCase().includes(discSearchTerm.toLowerCase()) ||
+        inc.studentRoll.toLowerCase().includes(discSearchTerm.toLowerCase()) ||
+        inc.incidentNumber.toLowerCase().includes(discSearchTerm.toLowerCase()) ||
+        inc.guardianMobile.includes(discSearchTerm) ||
+        inc.matterDescription.toLowerCase().includes(discSearchTerm.toLowerCase());
+
+      const matchCat = discFilterCategory === 'ALL' || inc.category === discFilterCategory;
+      const matchSev = discFilterSeverity === 'ALL' || inc.severity === discFilterSeverity;
+      const matchStatus = discFilterStatus === 'ALL' || inc.status === discFilterStatus;
+
+      return matchSearch && matchCat && matchSev && matchStatus;
+    });
+  }, [disciplinaryIncidents, discSearchTerm, discFilterCategory, discFilterSeverity, discFilterStatus]);
+
+  // Handle Parent Acknowledgment Toggle
+  const handleToggleParentAck = (incident: DisciplinaryIncident) => {
+    if (!onUpdateIncident) return;
+    const isAck = !incident.parentAcknowledged;
+    onUpdateIncident({
+      ...incident,
+      parentAcknowledged: isAck,
+      status: isAck ? 'GUARDIAN_RESOLVED' : 'NOTICE_SERVED',
+      parentAcknowledgmentNotes: isAck 
+        ? `Guardian acknowledged and verified on ${new Date().toLocaleDateString('en-IN')} at ${new Date().toLocaleTimeString()} IST.`
+        : undefined,
+    });
+  };
 
   // Handle Dispatch of Bulk Notification
   const handleDispatchNotification = () => {
@@ -366,94 +415,149 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header & Filter Controls */}
+      {/* Header & Navigation Controls */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                CAMPUS PROTOCOL COMPLIANT
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center gap-1">
+                <Smartphone className="w-3 h-3" /> WhatsApp &amp; SMS DLT Linked
+              </span>
+            </div>
             <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-indigo-400" />
-              Resident Student Management &amp; Verified Directory
+              Resident Student Management &amp; Disciplinary Protocol Hub
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Secure identity documents vault, police verification mapping, room-bed association, and grievance tracking.
+              Aadhaar &amp; identity vault, police compliance, room association, and instant automated WhatsApp/SMS misconduct dispatches to parents.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => onOpenMisconductModal?.()}
+              className="px-3.5 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-rose-600/25 cursor-pointer transition-all border border-rose-500/30"
+              title="Issue Formal Misconduct Notice & Alert Guardian via WhatsApp / SMS"
+            >
+              <ShieldAlert className="w-4 h-4 text-white" />
+              <span>Issue Disciplinary Notice</span>
+            </button>
             <button
               onClick={handleCreateClick}
-              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 cursor-pointer transition-colors"
+              className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-indigo-600/20 cursor-pointer transition-colors"
             >
               <UserPlus className="w-4 h-4" /> Admit Resident
             </button>
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
-          <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, roll, room, Aadhaar..."
-              className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
-            />
-          </div>
-
-          <select
-            value={selectedDepartment}
-            onChange={(e) => setSelectedDepartment(e.target.value)}
-            className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+        {/* Sub-Navigation Tabs */}
+        <div className="mt-5 flex items-center gap-2 border-b border-slate-800 pb-3">
+          <button
+            onClick={() => setActiveSubTab('DIRECTORY')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              activeSubTab === 'DIRECTORY'
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
           >
-            <option value="ALL">All Departments ({students.length})</option>
-            {departmentOptions.map((dept) => (
-              <option key={dept} value={dept}>
-                {dept}
-              </option>
-            ))}
-          </select>
+            <Building2 className="w-3.5 h-3.5" />
+            <span>Resident Directory</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-900/60 text-slate-300">
+              {students.length}
+            </span>
+          </button>
 
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+          <button
+            onClick={() => setActiveSubTab('DISCIPLINARY')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              activeSubTab === 'DISCIPLINARY'
+                ? 'bg-rose-600 text-white shadow-md shadow-rose-600/25'
+                : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+            }`}
           >
-            <option value="ALL">All Academic Years</option>
-            <option value="1">1st Year (Freshers)</option>
-            <option value="2">2nd Year (Sophomores)</option>
-            <option value="3">3rd Year (Juniors)</option>
-            <option value="4">4th Year (Seniors)</option>
-          </select>
-
-          <select
-            value={selectedVerification}
-            onChange={(e) => setSelectedVerification(e.target.value)}
-            className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-          >
-            <option value="ALL">All Police Status</option>
-            <option value="VERIFIED">✓ Verified by Police</option>
-            <option value="GENERATED">📄 Form Ready for Sign</option>
-            <option value="PENDING">⚠️ Verification Pending</option>
-          </select>
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>Guardian Misconduct &amp; SMS/WhatsApp Notices</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-950/80 text-rose-300 font-mono border border-rose-500/30">
+              {disciplinaryIncidents.length}
+            </span>
+          </button>
         </div>
 
-        {/* Notification Toast Alert */}
-        {bulkToastMessage && (
-          <div className="mt-4 p-3.5 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between gap-3 text-xs text-emerald-200 animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-              <span>{bulkToastMessage}</span>
+        {/* Search & Filter Bar (Only for Directory Tab) */}
+        {activeSubTab === 'DIRECTORY' && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-1">
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, roll, room, Aadhaar..."
+                className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
+              />
             </div>
-            <button
-              onClick={() => setBulkToastMessage(null)}
-              className="text-emerald-400 hover:text-emerald-200 p-1"
+
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
             >
-              <X className="w-4 h-4" />
-            </button>
+              <option value="ALL">All Departments ({students.length})</option>
+              {departmentOptions.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="ALL">All Academic Years</option>
+              <option value="1">1st Year (Freshers)</option>
+              <option value="2">2nd Year (Sophomores)</option>
+              <option value="3">3rd Year (Juniors)</option>
+              <option value="4">4th Year (Seniors)</option>
+            </select>
+
+            <select
+              value={selectedVerification}
+              onChange={(e) => setSelectedVerification(e.target.value)}
+              className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+            >
+              <option value="ALL">All Police Status</option>
+              <option value="VERIFIED">✓ Verified by Police</option>
+              <option value="GENERATED">📄 Form Ready for Sign</option>
+              <option value="PENDING">⚠️ Verification Pending</option>
+            </select>
           </div>
         )}
+      </div>
+
+      {/* DIRECTORY VIEW */}
+      {activeSubTab === 'DIRECTORY' && (
+        <div className="space-y-4 animate-fadeIn">
+          {/* Notification Toast Alert */}
+          {bulkToastMessage && (
+            <div className="p-3.5 bg-emerald-950/80 border border-emerald-500/40 rounded-xl flex items-center justify-between gap-3 text-xs text-emerald-200 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span>{bulkToastMessage}</span>
+              </div>
+              <button
+                onClick={() => setBulkToastMessage(null)}
+                className="text-emerald-400 hover:text-emerald-200 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
         {/* Multi-Selection Sticky Action Bar */}
         {selectedStudentIds.length > 0 && (
@@ -637,6 +741,15 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
 
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {/* Issue Disciplinary Misconduct Notice to Guardian (WhatsApp & SMS) */}
+                        <button
+                          onClick={() => onOpenMisconductModal?.(s)}
+                          title="Issue Misconduct Notice & Alert Guardian via WhatsApp / SMS"
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-600/20 text-rose-400 border border-slate-700 hover:border-rose-500/40 transition-colors cursor-pointer"
+                        >
+                          <ShieldAlert className="w-4 h-4" />
+                        </button>
+
                         {/* ID Vault Modal */}
                         <button
                           onClick={() => onOpenDocumentVault?.(s)}
@@ -702,6 +815,268 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           </table>
         </div>
       </div>
+      )}
+
+      {/* GUARDIAN MISCONDUCT & DISCIPLINARY NOTICES HUB */}
+      {activeSubTab === 'DISCIPLINARY' && (
+        <div className="space-y-5 animate-fadeIn">
+          {/* KPI Metrics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Notices Dispatched</div>
+                <div className="text-xl font-black text-slate-100 mt-0.5">{disciplinaryIncidents.length}</div>
+                <div className="text-[10px] text-rose-400">Official Guardian Records</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">WhatsApp Dispatches</div>
+                <div className="text-xl font-black text-emerald-400 mt-0.5">
+                  {disciplinaryIncidents.filter(i => i.whatsAppStatus === 'DELIVERED' || i.whatsAppStatus === 'READ').length}
+                </div>
+                <div className="text-[10px] text-slate-400">Direct Parent WhatsApp Alert</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">TRAI DLT SMS Gateway</div>
+                <div className="text-xl font-black text-purple-400 mt-0.5">
+                  {disciplinaryIncidents.filter(i => i.smsStatus === 'DELIVERED' || i.smsStatus === 'SENT').length}
+                </div>
+                <div className="text-[10px] text-slate-400">Header: NVNEST-DISC</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center gap-3.5 shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                <Scale className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Escalated / Summons</div>
+                <div className="text-xl font-black text-amber-400 mt-0.5">
+                  {disciplinaryIncidents.filter(i => i.severity === 'CRITICAL' || i.severity === 'HIGH').length}
+                </div>
+                <div className="text-[10px] text-amber-400/90">Warden Hearing Required</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Disciplinary Search & Filters */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={discSearchTerm}
+                  onChange={(e) => setDiscSearchTerm(e.target.value)}
+                  placeholder="Search student, roll, guardian mobile, ref..."
+                  className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-rose-500"
+                />
+              </div>
+
+              <select
+                value={discFilterCategory}
+                onChange={(e) => setDiscFilterCategory(e.target.value)}
+                className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+              >
+                <option value="ALL">All Misconduct Categories</option>
+                <option value="CURFEW_VIOLATION">Curfew &amp; Gate Breach</option>
+                <option value="UNAUTHORIZED_GUEST">Unauthorized Overnight Guest</option>
+                <option value="SUBSTANCE_ALCOHOL">Substance / Alcohol Contraband</option>
+                <option value="NOISE_DISTURBANCE">Quiet Hours / Noise Disturbance</option>
+                <option value="PROPERTY_DAMAGE">Hostel Property Damage</option>
+                <option value="RAGGING_BULLYING">Anti-Ragging / Bullying</option>
+                <option value="INSUBORDINATION">Insubordination to Staff</option>
+                <option value="MESS_DISCIPLINE">Mess Protocol Violation</option>
+                <option value="ELECTRICAL_SAFETY">Electrical / Fire Hazard</option>
+                <option value="OTHER">Other Misconduct</option>
+              </select>
+
+              <select
+                value={discFilterSeverity}
+                onChange={(e) => setDiscFilterSeverity(e.target.value)}
+                className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+              >
+                <option value="ALL">All Severities</option>
+                <option value="LOW">Low (Verbal Warning / 1st Notice)</option>
+                <option value="MODERATE">Moderate (Written Warning / Fine)</option>
+                <option value="HIGH">High (Parent Summons / Fine &gt;₹1k)</option>
+                <option value="CRITICAL">Critical (Expulsion Hearing)</option>
+              </select>
+
+              <select
+                value={discFilterStatus}
+                onChange={(e) => setDiscFilterStatus(e.target.value)}
+                className="bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
+              >
+                <option value="ALL">All Incident Statuses</option>
+                <option value="NOTICE_SERVED">Notice Served to Guardian</option>
+                <option value="GUARDIAN_ACKNOWLEDGED">Parent Acknowledged</option>
+                <option value="UNDER_INVESTIGATION">Under Investigation</option>
+                <option value="FINE_COLLECTED">Fine Collected</option>
+                <option value="GUARDIAN_RESOLVED">Resolved with Guardian</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Incidents Table */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+            <div className="px-5 py-3.5 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                <span className="text-xs font-bold text-slate-200">
+                  Disciplinary Misconduct Ledger &amp; Guardian Delivery Log ({filteredIncidents.length})
+                </span>
+              </div>
+              <button
+                onClick={() => onOpenMisconductModal?.()}
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow cursor-pointer transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Misconduct Notice</span>
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/60 text-slate-400 uppercase font-semibold border-b border-slate-800">
+                  <tr>
+                    <th className="px-4 py-3">Incident Ref</th>
+                    <th className="px-4 py-3">Resident &amp; Room</th>
+                    <th className="px-4 py-3">Guardian Contact</th>
+                    <th className="px-4 py-3">Category &amp; Severity</th>
+                    <th className="px-4 py-3">Matter Sent to Guardian</th>
+                    <th className="px-4 py-3 text-center">WhatsApp Delivery</th>
+                    <th className="px-4 py-3 text-center">SMS DLT Delivery</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredIncidents.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <ShieldCheck className="w-8 h-8 text-emerald-500/40" />
+                          <p className="text-xs font-medium text-slate-400">No disciplinary incidents match the selected filters.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredIncidents.map((inc) => (
+                      <tr key={inc.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3.5 font-mono text-[11px] text-slate-300">
+                          <div className="font-bold text-rose-400">{inc.incidentNumber}</div>
+                          <div className="text-[10px] text-slate-500">{new Date(inc.incidentDate).toLocaleDateString('en-IN')} {inc.incidentTime}</div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="font-bold text-slate-100">{inc.studentName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">Roll: {inc.studentRoll} &bull; Room {inc.roomNumber}</div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="font-semibold text-slate-200">{inc.guardianName}</div>
+                          <div className="text-[10px] text-indigo-300 flex items-center gap-1 font-mono">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            +91 {inc.guardianMobile}
+                          </div>
+                          <div className="text-[9px] text-slate-500 uppercase">{inc.guardianRelation}</div>
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                            {inc.category.replace(/_/g, ' ')}
+                          </div>
+                          <div className="mt-1">
+                            <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                              inc.severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                              inc.severity === 'HIGH' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                              inc.severity === 'MODERATE' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                              'bg-slate-700 text-slate-300'
+                            }`}>
+                              {inc.severity} SEVERITY
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3.5 max-w-xs">
+                          <p className="text-[11px] text-slate-300 line-clamp-2 italic">
+                            "{inc.matterDescription}"
+                          </p>
+                          {inc.actionTaken && (
+                            <div className="text-[10px] text-rose-400 font-medium mt-0.5">
+                              Sanction: {inc.actionTaken}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
+                            <MessageSquare className="w-3 h-3 text-emerald-400" />
+                            {inc.whatsAppStatus}
+                          </span>
+                          <div className="text-[9px] text-slate-500 font-mono mt-0.5">Meta API Logged</div>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950/80 text-purple-300 border border-purple-500/30">
+                            <Smartphone className="w-3 h-3 text-purple-400" />
+                            {inc.smsStatus}
+                          </span>
+                          <div className="text-[9px] text-slate-500 font-mono mt-0.5">{inc.smsDltTemplateId || 'DLT-1107'}</div>
+                        </td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => setSelectedIncidentDetail(inc)}
+                              title="View Full Matter &amp; Audit Certificate"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600/20 text-indigo-400 border border-slate-700 hover:border-indigo-500/40 transition-colors cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            <a
+                              href={`https://wa.me/91${inc.guardianMobile.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                `*OFFICIAL DISCIPLINARY NOTICE - NATIVE NEST RESIDENCE HALL*\n\nIncident Ref: ${inc.incidentNumber}\nStudent: ${inc.studentName} (Roll: ${inc.studentRoll}, Room: ${inc.roomNumber})\nCategory: ${inc.category}\n\n*Matter Details:*\n${inc.matterDescription}\n\nAction Imposed: ${inc.actionTaken || 'Formal Warning Recorded'}\n\nChief Warden Office\nContact: +91 94250 12345`
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Direct WhatsApp to Guardian"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600/20 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 transition-colors cursor-pointer"
+                            >
+                              <MessageSquare className="w-4 h-4" />
+                            </a>
+
+                            <button
+                              onClick={() => handleToggleParentAck(inc)}
+                              title={inc.parentAcknowledged ? "Mark Pending Parent Acknowledgment" : "Mark Parent Acknowledged"}
+                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                inc.parentAcknowledged
+                                  ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/40 hover:bg-emerald-900/40'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-emerald-400'
+                              }`}
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Modal: Admit or Edit Student Form */}
       {showAddModal && (
@@ -1413,6 +1788,192 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
           </div>
         </div>
       )}
+
+      {/* DISCIPLINARY INCIDENT DETAIL & AUDIT CERTIFICATE MODAL */}
+      {selectedIncidentDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div className="px-6 py-4 bg-slate-850 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-100">
+                      Disciplinary Notice #{selectedIncidentDetail.incidentNumber}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                      selectedIncidentDetail.severity === 'CRITICAL' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                      selectedIncidentDetail.severity === 'HIGH' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
+                      'bg-slate-800 text-slate-300'
+                    }`}>
+                      {selectedIncidentDetail.severity}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Officially served to Guardian via WhatsApp Bot &amp; TRAI DLT SMS Gateway
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedIncidentDetail(null)}
+                className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 flex items-center justify-center text-sm font-bold transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs text-slate-300">
+              {/* Resident & Guardian Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Student / Ward Particulars
+                  </span>
+                  <div className="font-bold text-slate-100 text-sm">{selectedIncidentDetail.studentName}</div>
+                  <div className="text-slate-400 font-mono">
+                    Roll: <span className="text-slate-200">{selectedIncidentDetail.studentRoll}</span> &bull; Room <span className="text-slate-200">{selectedIncidentDetail.roomNumber}</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Incident Time: {new Date(selectedIncidentDetail.incidentDate).toLocaleDateString('en-IN')} at {selectedIncidentDetail.incidentTime}
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-950/70 border border-slate-800 rounded-xl space-y-1.5">
+                  <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider block">
+                    Parent / Guardian Contact
+                  </span>
+                  <div className="font-bold text-slate-100 text-sm">{selectedIncidentDetail.guardianName}</div>
+                  <div className="text-indigo-300 font-mono font-semibold flex items-center gap-1.5">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    +91 {selectedIncidentDetail.guardianMobile}
+                    <span className="text-[10px] text-slate-400 font-normal">({selectedIncidentDetail.guardianRelation})</span>
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Language: {selectedIncidentDetail.languagePreference || 'ENGLISH'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Notice Matter Formal Letterhead Display */}
+              <div className="p-4 bg-slate-950 border border-rose-500/30 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Scale className="w-4 h-4 text-rose-400" />
+                    <span className="font-bold text-slate-200 uppercase tracking-wide text-[11px]">
+                      Official Matter Dispatched to Guardian
+                    </span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-850 text-slate-400 border border-slate-700">
+                    {selectedIncidentDetail.category.replace(/_/g, ' ')}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-slate-900/90 rounded-lg text-slate-200 leading-relaxed font-serif text-[12px] border border-slate-800/80">
+                  {selectedIncidentDetail.matterDescription}
+                </div>
+
+                {selectedIncidentDetail.actionTaken && (
+                  <div className="p-2.5 bg-rose-950/30 border border-rose-500/20 rounded-lg flex items-center justify-between">
+                    <span className="text-slate-300 font-medium">Disciplinary Sanction Imposed:</span>
+                    <span className="font-bold text-rose-400 font-mono">{selectedIncidentDetail.actionTaken}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Channels Verification */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 bg-emerald-950/30 border border-emerald-500/20 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-300 flex items-center gap-1.5">
+                      <MessageSquare className="w-3.5 h-3.5" /> WhatsApp Business Bot
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-900/60 text-emerald-300 border border-emerald-500/40">
+                      {selectedIncidentDetail.whatsAppStatus}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Msg ID: {selectedIncidentDetail.whatsAppMessageId || 'wamid.HBgLOTE4ODcyNTI...'}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Sent to: +91 {selectedIncidentDetail.guardianMobile}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-purple-950/30 border border-purple-500/20 rounded-xl space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-300 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5" /> TRAI DLT SMS Gateway
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-900/60 text-purple-300 border border-purple-500/40">
+                      {selectedIncidentDetail.smsStatus}
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-mono">
+                    Template: {selectedIncidentDetail.smsDltTemplateId || 'DLT-1107-DISC-01'}
+                  </div>
+                  <div className="text-[10px] text-slate-400">
+                    Header: NVNEST-DISC (Transactional)
+                  </div>
+                </div>
+              </div>
+
+              {/* Tamper-Proof Audit Hash */}
+              <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">
+                  SHA-256 Digital Verification &amp; Tamper-Proof Seal
+                </span>
+                <p className="font-mono text-[10px] text-indigo-300 break-all select-all">
+                  {selectedIncidentDetail.sha256AuditHash || 'e89f81a7b4528cd902194bcf9301948df920194bc029384719284710293847a1'}
+                </p>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                  <span>Issued By: {selectedIncidentDetail.reportedBy} ({selectedIncidentDetail.reporterDesignation})</span>
+                  <span>Parent Ack: {selectedIncidentDetail.parentAcknowledged ? '✅ Verified' : '⏳ Pending Contact'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-850 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={() => handleToggleParentAck(selectedIncidentDetail)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  selectedIncidentDetail.parentAcknowledged
+                    ? 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md'
+                }`}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{selectedIncidentDetail.parentAcknowledged ? 'Mark Pending Acknowledgment' : 'Mark Parent Acknowledged'}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={`https://wa.me/91${selectedIncidentDetail.guardianMobile.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                    `*OFFICIAL DISCIPLINARY NOTICE - NATIVE NEST RESIDENCE HALL*\n\nIncident Ref: ${selectedIncidentDetail.incidentNumber}\nStudent: ${selectedIncidentDetail.studentName} (Roll: ${selectedIncidentDetail.studentRoll}, Room: ${selectedIncidentDetail.roomNumber})\nCategory: ${selectedIncidentDetail.category}\n\n*Matter Details:*\n${selectedIncidentDetail.matterDescription}\n\nAction Imposed: ${selectedIncidentDetail.actionTaken || 'Formal Warning'}\n\nChief Warden Office\nContact: +91 94250 12345`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow transition-colors cursor-pointer"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Open WhatsApp Web</span>
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedIncidentDetail(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

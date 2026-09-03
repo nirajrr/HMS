@@ -549,3 +549,160 @@ export interface SecurityAuditAssessment {
   };
 }
 
+// ----------------------------------------------------
+// STUDENT MISCONDUCT & GUARDIAN NOTIFICATION (WHATSAPP & SMS) TYPES
+// ----------------------------------------------------
+
+export type MisconductCategory = 
+  | 'CURFEW_LATE_ENTRY' 
+  | 'RAGGING_BULLYING' 
+  | 'PROPERTY_DAMAGE' 
+  | 'UNAUTHORIZED_GUEST' 
+  | 'SUBSTANCE_PROHIBITION' 
+  | 'NOISE_DISTURBANCE' 
+  | 'FIGHT_VIOLENCE' 
+  | 'INSUBORDINATION' 
+  | 'ACADEMIC_ATTENDANCE' 
+  | 'OTHER';
+
+export type MisconductSeverity = 
+  | 'MINOR_WARNING' 
+  | 'MODERATE_INFRACTION' 
+  | 'MAJOR_VIOLATION' 
+  | 'CRITICAL_DISCIPLINARY';
+
+export type DisciplinaryActionType = 
+  | 'WRITTEN_WARNING' 
+  | 'GUARDIAN_SUMMONS' 
+  | 'FINE_IMPOSED' 
+  | 'PROBATION' 
+  | 'ROOM_EXPULSION_SUSPENSION';
+
+export interface DisciplinaryIncident {
+  id: string;
+  incidentNumber: string; // e.g. "DISC-2026-0812"
+  studentId: string;
+  studentRoll: string;
+  studentName: string;
+  roomNumber: string;
+  bedNumber: string;
+  department?: string;
+  guardianName: string;
+  guardianMobile: string;
+  category: MisconductCategory;
+  severity: MisconductSeverity;
+  title: string;
+  matterDescription: string; // Detailed matter of student misconduct
+  incidentDate: string;
+  incidentTime: string;
+  location: string;
+  fineAmount?: number;
+  actionProposed: DisciplinaryActionType;
+  reportedBy: string;
+  witnessInfo?: string;
+  smsStatus: 'NOT_SENT' | 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
+  whatsAppStatus: 'NOT_SENT' | 'QUEUED' | 'SENT' | 'DELIVERED' | 'READ';
+  smsMessageContent: string;
+  whatsAppMessageContent: string;
+  dispatchedAt?: string;
+  dltTemplateId?: string;
+  whatsAppMessageId?: string;
+  sha256AuditHash: string;
+  parentAcknowledged?: boolean;
+  parentAcknowledgmentNotes?: string;
+  status: 'OPEN_INVESTIGATION' | 'NOTICE_SERVED' | 'GUARDIAN_RESOLVED' | 'ESCALATED_CHIEF_WARDEN' | 'CLOSED';
+}
+
+// ----------------------------------------------------
+// USER AUTHENTICATION & ROLE-WISE ACCESS TYPES
+// ----------------------------------------------------
+
+export interface UserCredential {
+  userId: string;
+  loginId: string; // Username / Login ID
+  passwordHash: string;
+  plainPasswordHint?: string; // For administrative review / demo display
+  role: UserRole;
+  fullName: string;
+  email: string;
+  department: string;
+  accessibleTabs: string[];
+  restrictedActions: string[];
+  mustChangePasswordOnFirstLogin?: boolean;
+  failedLoginAttempts: number;
+  isAccountLocked: boolean;
+  twoFactorSecret?: string;
+  isTwoFactorEnabled: boolean;
+  lastLoginTimestamp?: string;
+}
+
+export interface AuthSession {
+  isAuthenticated: boolean;
+  user: User | null;
+  credential?: UserCredential | null;
+  token: string;
+  loginTime: string;
+  expiresAt: string;
+  boundMachineHwid: string;
+  ipAddress: string;
+}
+
+export interface RoleRightDefinition {
+  role: UserRole;
+  roleDisplayName: string;
+  description: string;
+  colorBadge: string;
+  accessibleNavTabs: Array<{ id: string; name: string; permission: 'FULL_CONTROL' | 'READ_WRITE' | 'READ_ONLY' }>;
+  deniedModules: string[];
+  maxHighValueApprovalLimit: number; // in INR
+  canManageUsers: boolean;
+  canExportPoliceData: boolean;
+  canApproveRoomSwap: boolean;
+  canCollectFees: boolean;
+}
+
+// ----------------------------------------------------
+// HARDWARE MACHINE LOCK & NODE-LOCK LICENSING TYPES
+// ----------------------------------------------------
+
+export interface HardwareFingerprint {
+  machineHwid: string; // e.g. "HWID-88A2-771B-94E0-55C3"
+  motherboardUuid: string;
+  cpuMicrocodeId: string;
+  primaryMacAddress: string;
+  diskVolumeSerial: string;
+  osHostName: string;
+  osPlatform: 'WINDOWS_X64' | 'LINUX_X64' | 'DARWIN_ARM64' | 'ANDROID_ARM64';
+  totalRamGb: number;
+  generatedTimestamp: string;
+  hardwareHashSha256: string;
+}
+
+export interface MachineLicense {
+  licenseKey: string; // e.g. "NVNEST-PRO-88A2-771B-94E0-ACTIVATED"
+  organizationName: string;
+  edition: 'ENTERPRISE_STANDALONE_NODE_LOCKED' | 'WARDEN_SINGLE_PC' | 'HOSTEL_CAMPUS_PREMIUM';
+  boundHwid: string;
+  boundHostName: string;
+  activationDate: string;
+  expiryDate: string; // e.g. "2029-12-31" or "LIFETIME_PERPETUAL"
+  maxConcurrentUsers: number;
+  antiTamperSeal: string; // RSA / HMAC signature
+  status: 'ACTIVE_BOUND' | 'HARDWARE_MISMATCH_LOCKED' | 'EXPIRED' | 'UNLICENSED_TRIAL';
+  lockoutReason?: string;
+  allowedOfflineDays: number;
+  lastHardwareScanTimestamp: string;
+}
+
+export interface StandalonePackagingStep {
+  stepNumber: number;
+  title: string;
+  category: 'ELECTRON_WINDOWS' | 'TAURI_RUST' | 'SQLITE_DATABASE' | 'NODE_LOCK_BINDER' | 'INSTALLER_BUILD';
+  command: string;
+  description: string;
+  codeSnippet?: string;
+  fileName?: string;
+}
+
+
+

@@ -7,7 +7,7 @@ import {
   TrendingUp, Sparkles, Star, MessageSquare, SlidersHorizontal,
   Bed, Maximize2, RefreshCw, AlertOctagon, FolderLock, FileText,
   Clock, Check, Monitor, Smartphone, Zap, Leaf, PieChart as PieChartIcon,
-  GraduationCap, Send
+  GraduationCap, Send, Box, Key, Lock
 } from 'lucide-react';
 import { 
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend
@@ -18,7 +18,8 @@ import {
   FinancialAlert, Review, Notice, UserRole, BedConfig,
   HousekeepingRecord, ResidentComplaint, StudentCleaningRemark, 
   IdentityDocument, SyncEngineStatus, SyncPacket,
-  UserSecurityProfile, DualSignoffRequest, DataIntegrationConnector, SecurityAuditAssessment
+  UserSecurityProfile, DualSignoffRequest, DataIntegrationConnector, SecurityAuditAssessment,
+  DisciplinaryIncident, UserCredential, HardwareFingerprint, MachineLicense
 } from './types';
 import { 
   INITIAL_USERS, INITIAL_BANKS, INITIAL_ROOMS, 
@@ -27,7 +28,10 @@ import {
   INITIAL_REVIEWS, INITIAL_NOTICES, INITIAL_COMPLAINTS, INITIAL_HOUSEKEEPING,
   INITIAL_SYNC_STATUS, INITIAL_SYNC_PACKETS,
   INITIAL_SECURITY_ASSESSMENT, INITIAL_USER_SECURITY_PROFILES,
-  INITIAL_DUAL_SIGNOFF_REQUESTS, INITIAL_DATA_INTEGRATION_CONNECTORS
+  INITIAL_DUAL_SIGNOFF_REQUESTS, INITIAL_DATA_INTEGRATION_CONNECTORS,
+  INITIAL_DISCIPLINARY_INCIDENTS, INITIAL_USER_CREDENTIALS,
+  INITIAL_MACHINE_FINGERPRINT, INITIAL_MACHINE_LICENSE,
+  SIMULATED_CLONED_MACHINE_FINGERPRINT, STANDALONE_PACKAGING_STEPS
 } from './data';
 
 // Import Modular Components
@@ -49,6 +53,10 @@ import { ResidentComplaintModal } from './components/ResidentComplaintModal';
 import { DualPlatformView } from './components/DualPlatformView';
 import { ReportEngine } from './components/ReportEngine';
 import { SecurityDataIntegrationHub } from './components/SecurityDataIntegrationHub';
+import { GuardianMisconductModal } from './components/GuardianMisconductModal';
+import { LoginAuthModal } from './components/LoginAuthModal';
+import { HardwareLicenseManager } from './components/HardwareLicenseManager';
+import { StandalonePackagingModal } from './components/StandalonePackagingModal';
 
 export const App: React.FC = () => {
   // Global State
@@ -56,7 +64,7 @@ export const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User>(INITIAL_USERS[0]);
   const [activeTab, setActiveTab] = useState<
     'SYNC_DUAL' | 'SECURITY' | 'REPORTS' | 'OVERVIEW' | 'MASTER_ROOMS' | 'STUDENTS' | 'ROOMS' | 'MESS' | 'FINANCE' | 
-    'MAINTENANCE' | 'COMPLAINTS' | 'POLICE' | 'RBAC' | 'AUDIT' | 'REVIEWS_NOTICES'
+    'MAINTENANCE' | 'COMPLAINTS' | 'POLICE' | 'RBAC' | 'AUDIT' | 'REVIEWS_NOTICES' | 'HARDWARE_LOCK'
   >('SYNC_DUAL');
 
   const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
@@ -96,6 +104,19 @@ export const App: React.FC = () => {
   const [complaintFilterCat, setComplaintFilterCat] = useState('ALL');
   const [complaintFilterStatus, setComplaintFilterStatus] = useState('ALL');
 
+  // Disciplinary Misconduct & Guardian Notification State (WhatsApp & SMS)
+  const [disciplinaryIncidents, setDisciplinaryIncidents] = useState<DisciplinaryIncident[]>(INITIAL_DISCIPLINARY_INCIDENTS);
+  const [selectedStudentForMisconduct, setSelectedStudentForMisconduct] = useState<Student | null>(null);
+  const [isMisconductModalOpen, setIsMisconductModalOpen] = useState<boolean>(false);
+
+  // Single-PC Node Lock & Hardware Fingerprint State
+  const [machineFingerprint, setMachineFingerprint] = useState<HardwareFingerprint>(INITIAL_MACHINE_FINGERPRINT);
+  const [machineLicense, setMachineLicense] = useState<MachineLicense>(INITIAL_MACHINE_LICENSE);
+  const [isMachineCloned, setIsMachineCloned] = useState<boolean>(false);
+  const [userCredentials, setUserCredentials] = useState<UserCredential[]>(INITIAL_USER_CREDENTIALS);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isPackagingModalOpen, setIsPackagingModalOpen] = useState<boolean>(false);
+
   // Department Distribution Data for Recharts Pie Chart in Executive Overview
   const departmentDistributionData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -126,7 +147,11 @@ export const App: React.FC = () => {
   }, [students]);
 
   // Trigger Bi-directional Sync Packet
-  const handleTriggerSync = (source: 'EXE_DESKTOP' | 'APK_MOBILE', action: string, details: string) => {
+  const handleTriggerSync = (
+    source: 'EXE_DESKTOP' | 'APK_MOBILE' = 'EXE_DESKTOP',
+    action: string = 'DATA_SYNC',
+    details: string = 'Auto synchronization of resident, fee, disciplinary, and hostel records'
+  ) => {
     const destination = source === 'EXE_DESKTOP' ? 'APK_MOBILE' : 'EXE_DESKTOP';
     const newPacket: SyncPacket = {
       id: `PKT-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -604,6 +629,36 @@ export const App: React.FC = () => {
         `Shift: Room ${oldRoomNumber} ➔ ${targetRoomNumber}`
       );
     }
+  };
+
+  // Disciplinary Notice & Guardian Communication Handlers
+  const handleOpenMisconductModal = (student?: Student) => {
+    setSelectedStudentForMisconduct(student || null);
+    setIsMisconductModalOpen(true);
+  };
+
+  const handleDispatchMisconduct = (incident: DisciplinaryIncident) => {
+    setDisciplinaryIncidents((prev) => [incident, ...prev]);
+    logActivity(
+      'DISCIPLINARY_NOTICE_DISPATCHED',
+      'POLICE',
+      `Official Disciplinary Notice #${incident.incidentNumber} dispatched to ${incident.guardianName} (+91 ${incident.guardianMobile}) for student ${incident.studentName} [${incident.category} - ${incident.severity}]. Channels: WhatsApp (${incident.whatsAppStatus}), SMS (${incident.smsStatus}).`,
+      `Notice #${incident.incidentNumber}`
+    );
+    handleTriggerSync();
+  };
+
+  const handleUpdateIncident = (incident: DisciplinaryIncident) => {
+    setDisciplinaryIncidents((prev) =>
+      prev.map((item) => (item.id === incident.id ? incident : item))
+    );
+    logActivity(
+      'DISCIPLINARY_RECORD_UPDATED',
+      'POLICE',
+      `Updated Disciplinary Incident #${incident.incidentNumber} (${incident.studentName}). Parent Acknowledged: ${incident.parentAcknowledged ? 'YES' : 'NO'}.`,
+      `Notice #${incident.incidentNumber}`
+    );
+    handleTriggerSync();
   };
 
   // Room Status & Locking
@@ -1207,228 +1262,362 @@ export const App: React.FC = () => {
             </button>
           </div>
 
-          {/* Core Operations Navigation Links */}
+          {/* Navigation Links (Role-Aware Filtered) */}
           <nav className="space-y-1">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-2 pb-1">
-              Hostel Operations
-            </div>
+            {currentUser.role === 'STUDENT' ? (
+              /* ================= STUDENT RESIDENT PORTAL NAVIGATION ================= */
+              <>
+                <div className="flex items-center justify-between px-3 pt-2 pb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 font-mono">
+                    🎓 Student Portal (Scoped)
+                  </span>
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-bold px-1.5 py-0.5 rounded">
+                    Resident
+                  </span>
+                </div>
 
-            <button
-              onClick={() => setActiveTab('OVERVIEW')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'OVERVIEW'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <Home className="w-4 h-4" />
-              Executive Dashboard
-            </button>
+                {/* Primary Student Feature: Resident Grievances */}
+                <button
+                  onClick={() => setActiveTab('COMPLAINTS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'COMPLAINTS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <AlertOctagon className="w-4 h-4 text-rose-400" />
+                    <span>Resident Grievances</span>
+                  </div>
+                  {complaints.filter((c) => c.status === 'OPEN').length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
+                      {complaints.filter((c) => c.status === 'OPEN').length} Open
+                    </span>
+                  )}
+                </button>
 
-            {/* MASTER ROOM & BED CONFIG TAB */}
-            <button
-              onClick={() => setActiveTab('MASTER_ROOMS')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'MASTER_ROOMS'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <SlidersHorizontal className="w-4 h-4 text-amber-400" />
-                <span>Master Rooms &amp; Beds</span>
-              </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold uppercase tracking-wider">
-                Master
-              </span>
-            </button>
+                {/* Housekeeping & 3/4 Room Cleaning Quorum */}
+                <button
+                  onClick={() => setActiveTab('MAINTENANCE')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'MAINTENANCE'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Wrench className="w-4 h-4 text-amber-400" />
+                    <span>Room Cleaning &amp; Quorum</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                    3/4 Vote
+                  </span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab('STUDENTS')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'STUDENTS'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Users className="w-4 h-4" />
-                Resident Boys Directory
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                {students.length}
-              </span>
-            </button>
+                {/* Pure Veg Mess Menu & Dues */}
+                <button
+                  onClick={() => setActiveTab('MESS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'MESS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Utensils className="w-4 h-4 text-emerald-400" />
+                    <span>Mess Diet &amp; UPI Billing</span>
+                  </div>
+                  {pendingMessDeficit > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
+                      ₹{(pendingMessDeficit / 1000).toFixed(1)}k
+                    </span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => setActiveTab('ROOMS')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'ROOMS'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Building2 className="w-4 h-4" />
-                Room &amp; Bed Allotment
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
-                {availableBeds} Free
-              </span>
-            </button>
+                {/* Feedback & Campus Bulletin Board */}
+                <button
+                  onClick={() => setActiveTab('REVIEWS_NOTICES')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'REVIEWS_NOTICES'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <Star className="w-4 h-4 text-amber-400" />
+                  <span>Notices &amp; Food Reviews</span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab('MESS')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'MESS'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Utensils className="w-4 h-4 text-emerald-400" />
-                <span>Pure Veg Mess &amp; Billing</span>
-              </div>
-              {pendingMessDeficit > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
-                  ₹{(pendingMessDeficit / 1000).toFixed(1)}k
-                </span>
-              )}
-            </button>
+                {/* Room & Bed Allocation Summary */}
+                <button
+                  onClick={() => setActiveTab('ROOMS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'ROOMS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Building2 className="w-4 h-4 text-indigo-400" />
+                    <span>My Room &amp; Bed Details</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                    Allotment
+                  </span>
+                </button>
+              </>
+            ) : (
+              /* ================= STAFF / WARDEN / ADMIN FULL NAVIGATION ================= */
+              <>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3 pt-2 pb-1">
+                  Hostel Operations
+                </div>
 
-            <button
-              onClick={() => setActiveTab('FINANCE')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'FINANCE'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Landmark className="w-4 h-4" />
-                Multi-Bank Treasury
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
-                4 Banks
-              </span>
-            </button>
+                <button
+                  onClick={() => setActiveTab('OVERVIEW')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'OVERVIEW'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <Home className="w-4 h-4" />
+                  Executive Dashboard
+                </button>
 
-            {/* MAINTENANCE & 3/4 HOUSEKEEPING QUORUM ENGINE */}
-            <button
-              onClick={() => setActiveTab('MAINTENANCE')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'MAINTENANCE'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Wrench className="w-4 h-4" />
-                <span>Housekeeping &amp; Maint.</span>
-              </div>
-              {housekeepingRecords.some((h) => h.status === 'FLAGGED_ESCALATED_ADMIN') && (
-                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
-              )}
-            </button>
+                {/* MASTER ROOM & BED CONFIG TAB */}
+                <button
+                  onClick={() => setActiveTab('MASTER_ROOMS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'MASTER_ROOMS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+                    <span>Master Rooms &amp; Beds</span>
+                  </div>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold uppercase tracking-wider">
+                    Master
+                  </span>
+                </button>
 
-            {/* RESIDENT COMPLAINTS TAB */}
-            <button
-              onClick={() => setActiveTab('COMPLAINTS')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'COMPLAINTS'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <AlertOctagon className="w-4 h-4 text-rose-400" />
-                <span>Resident Grievances</span>
-              </div>
-              {complaints.filter((c) => c.status === 'OPEN').length > 0 && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
-                  {complaints.filter((c) => c.status === 'OPEN').length} Open
-                </span>
-              )}
-            </button>
+                <button
+                  onClick={() => setActiveTab('STUDENTS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'STUDENTS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Users className="w-4 h-4" />
+                    Resident Boys Directory
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                    {students.length}
+                  </span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab('POLICE')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'POLICE'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-4 h-4" />
-                <span>Police KYC (Online Portal)</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 font-mono">
-                {verifiedPolicePercentage}%
-              </span>
-            </button>
+                <button
+                  onClick={() => setActiveTab('ROOMS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'ROOMS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Building2 className="w-4 h-4" />
+                    Room &amp; Bed Allotment
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono">
+                    {availableBeds} Free
+                  </span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab('REVIEWS_NOTICES')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'REVIEWS_NOTICES'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <Star className="w-4 h-4 text-amber-400" />
-              Feedback &amp; Bulletin Board
-            </button>
+                <button
+                  onClick={() => setActiveTab('MESS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'MESS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Utensils className="w-4 h-4 text-emerald-400" />
+                    <span>Pure Veg Mess &amp; Billing</span>
+                  </div>
+                  {pendingMessDeficit > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">
+                      ₹{(pendingMessDeficit / 1000).toFixed(1)}k
+                    </span>
+                  )}
+                </button>
 
-            <div className="pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
-              System Administration
-            </div>
+                <button
+                  onClick={() => setActiveTab('FINANCE')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'FINANCE'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Landmark className="w-4 h-4" />
+                    Multi-Bank Treasury
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">
+                    4 Banks
+                  </span>
+                </button>
 
-            <button
-              onClick={() => setActiveTab('SECURITY')}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'SECURITY'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Security &amp; 2FA Hub</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
-                {securityAssessment.overallSecurityScore}/100
-              </span>
-            </button>
+                {/* MAINTENANCE & 3/4 HOUSEKEEPING QUORUM ENGINE */}
+                <button
+                  onClick={() => setActiveTab('MAINTENANCE')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'MAINTENANCE'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Wrench className="w-4 h-4" />
+                    <span>Housekeeping &amp; Maint.</span>
+                  </div>
+                  {housekeepingRecords.some((h) => h.status === 'FLAGGED_ESCALATED_ADMIN') && (
+                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => setActiveTab('RBAC')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'RBAC'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <UserCheck className="w-4 h-4" />
-              RBAC Permissions
-            </button>
+                {/* RESIDENT COMPLAINTS TAB */}
+                <button
+                  onClick={() => setActiveTab('COMPLAINTS')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'COMPLAINTS'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <AlertOctagon className="w-4 h-4 text-rose-400" />
+                    <span>Resident Grievances</span>
+                  </div>
+                  {complaints.filter((c) => c.status === 'OPEN').length > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-mono font-bold">
+                      {complaints.filter((c) => c.status === 'OPEN').length} Open
+                    </span>
+                  )}
+                </button>
 
-            <button
-              onClick={() => setActiveTab('AUDIT')}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'AUDIT'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-              }`}
-            >
-              <History className="w-4 h-4" />
-              Immutable Audit Logs
-            </button>
+                <button
+                  onClick={() => setActiveTab('POLICE')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'POLICE'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Police KYC (Online Portal)</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 font-mono">
+                    {verifiedPolicePercentage}%
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('REVIEWS_NOTICES')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'REVIEWS_NOTICES'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <Star className="w-4 h-4 text-amber-400" />
+                  Feedback &amp; Bulletin Board
+                </button>
+
+                <div className="pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
+                  System Administration
+                </div>
+
+                <button
+                  onClick={() => setActiveTab('SECURITY')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'SECURITY'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Security &amp; 2FA Hub</span>
+                  </div>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">
+                    {securityAssessment.overallSecurityScore}/100
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('RBAC')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'RBAC'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <UserCheck className="w-4 h-4" />
+                  Role &amp; Right Access (RBAC)
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('HARDWARE_LOCK')}
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'HARDWARE_LOCK'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-4 h-4 text-emerald-400" />
+                    <span>Single-PC Hardware Lock</span>
+                  </div>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-bold uppercase ${
+                    isMachineCloned || machineLicense.status === 'HARDWARE_MISMATCH_LOCKED'
+                      ? 'bg-rose-500/20 text-rose-300'
+                      : 'bg-emerald-500/20 text-emerald-300'
+                  }`}>
+                    {isMachineCloned ? 'LOCKED' : 'HWID'}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('AUDIT')}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    activeTab === 'AUDIT'
+                      ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 font-bold'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                  }`}
+                >
+                  <History className="w-4 h-4" />
+                  Immutable Audit Logs
+                </button>
+              </>
+            )}
           </nav>
         </div>
 
         {/* Bottom Documentation & Architecture Button */}
         <div className="p-3 border-t border-slate-800 bg-slate-950/60 space-y-2">
+          <button
+            onClick={() => setIsPackagingModalOpen(true)}
+            className="w-full py-2 px-3 rounded-xl bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          >
+            <Box className="w-4 h-4 text-emerald-400" />
+            Standalone App Packaging (.exe/.apk)
+          </button>
           <button
             onClick={() => setShowDocModal(true)}
             className="w-full py-2 px-3 rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
@@ -1468,30 +1657,30 @@ export const App: React.FC = () => {
           {/* Quick Platform Switchers & Triggers */}
           <div className="flex items-center gap-3">
             
-            {/* .EXE Desktop Download Simulation */}
+            {/* Single-PC Node Lock Indicator */}
             <button
-              onClick={() => {
-                alert('Downloading NativeNestVegBoysPG_Workstation_Setup_v3.8.2.exe (Windows 64-bit Workstation Installer with SQLite/PostgreSQL bridge)');
-                logActivity('EXE_CLIENT_DOWNLOADED', 'ADMIN', 'Initiated Windows Desktop installer package download (v3.8.2.exe).');
-              }}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold cursor-pointer transition-colors"
-              title="Download Windows Desktop Executable"
+              onClick={() => setActiveTab('HARDWARE_LOCK')}
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold cursor-pointer transition-colors ${
+                isMachineCloned || machineLicense.status === 'HARDWARE_MISMATCH_LOCKED'
+                  ? 'bg-rose-950/60 border-rose-500/50 text-rose-300 animate-pulse'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+              }`}
+              title="Hardware Node-Lock & Licensing Engine"
             >
-              <Monitor className="w-3.5 h-3.5 text-blue-400" />
-              <span>Get .EXE (v3.8)</span>
+              <Lock className={`w-3.5 h-3.5 ${isMachineCloned ? 'text-rose-400' : 'text-emerald-400'}`} />
+              <span className="font-mono text-[11px]">
+                {isMachineCloned ? 'HW-LOCKED' : machineFingerprint.machineHwid.substring(0, 9) + '...'}
+              </span>
             </button>
 
-            {/* .APK Android Download Simulation */}
+            {/* Standalone Packaging Blueprint */}
             <button
-              onClick={() => {
-                alert('Downloading NativeNestVegBoysPG_Android_Staff_v3.8.2.apk (Android 8.0+ APK with bi-directional socket connector)');
-                logActivity('APK_PACKAGE_DOWNLOADED', 'ADMIN', 'Initiated Android Mobile Staff APK package download (v3.8.2.apk).');
-              }}
-              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold cursor-pointer transition-colors"
-              title="Download Android APK Package"
+              onClick={() => setIsPackagingModalOpen(true)}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-xs font-bold cursor-pointer transition-colors"
+              title="Step-by-Step Standalone Desktop & Mobile App Conversion Guide"
             >
-              <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Get .APK (v3.8)</span>
+              <Box className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Standalone .exe/.apk Guide</span>
             </button>
 
             {/* Quick PDF Report Trigger */}
@@ -1561,74 +1750,149 @@ export const App: React.FC = () => {
               )}
             </div>
 
-            {/* Active User Chip */}
-            <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-8 h-8 rounded-xl object-cover ring-2 ring-indigo-500/40"
-              />
-              <div className="hidden sm:block text-left">
-                <div className="text-xs font-bold text-slate-200 leading-tight">
-                  {currentUser.fullName || currentUser.name}
-                </div>
-                <span className="text-[10px] font-mono text-indigo-400 uppercase font-semibold">
-                  {currentUser.role}
-                </span>
+            {/* Interactive User Account Chip & Role Switcher */}
+            <button
+              onClick={() => setIsLoginModalOpen(true)}
+              className="flex items-center gap-2.5 pl-3 border-l border-slate-800 hover:bg-slate-800/60 p-1.5 rounded-xl transition-all cursor-pointer text-left group"
+              title="Click to Switch User / Login with Role Credentials"
+            >
+              <div className="relative">
+                <img
+                  src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces'}
+                  alt={currentUser.name}
+                  className="w-8 h-8 rounded-xl object-cover ring-2 ring-indigo-500/40"
+                />
+                <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-slate-900"></span>
               </div>
-            </div>
+              <div className="hidden sm:block text-left">
+                <div className="text-xs font-bold text-slate-200 leading-tight group-hover:text-indigo-300 flex items-center gap-1">
+                  <span>{currentUser.fullName || currentUser.name}</span>
+                  <Key className="w-3 h-3 text-slate-500 group-hover:text-indigo-400" />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono text-indigo-400 uppercase font-semibold">
+                    {currentUser.role.replace('_', ' ')}
+                  </span>
+                  <span className="text-[9px] text-slate-500">• Switch</span>
+                </div>
+              </div>
+            </button>
           </div>
         </header>
 
-        {/* Live System KPI Top Strip */}
-        <div className="bg-slate-900/60 border-b border-slate-800/80 px-6 py-2.5 flex items-center justify-between text-xs overflow-x-auto gap-4">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Occupancy:</span>
-              <span className="font-bold text-slate-100 font-mono">
-                {occupiedBeds}/{totalBeds} Beds ({occupancyPercentage}%)
+        {/* Live System KPI Top Strip (Role Scoped) */}
+        {currentUser.role === 'STUDENT' ? (
+          <div className="bg-emerald-950/40 border-b border-emerald-500/30 px-6 py-2.5 flex items-center justify-between text-xs overflow-x-auto gap-4">
+            <div className="flex items-center gap-5">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-emerald-300 font-bold">Resident Portal Active:</span>
+                <span className="text-slate-300 font-semibold">{currentUser.fullName}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Assigned Room:</span>
+                <span className="font-bold text-slate-100 font-mono">Room 101 • Bed A</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">My Mess Dues:</span>
+                <span className="font-bold text-emerald-400 font-mono">₹0 (Paid - Standard Veg)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Open Grievances:</span>
+                <span className="font-bold text-amber-400 font-mono">
+                  {complaints.filter((c) => c.status === 'OPEN').length} Active
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-slate-400 bg-slate-900/80 px-2.5 py-1 rounded-lg border border-slate-700">
+                Restricted to Grievances &amp; Resident Services
               </span>
+              <button
+                onClick={() => setIsLoginModalOpen(true)}
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold underline cursor-pointer"
+              >
+                Switch to Admin / Staff
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-slate-900/60 border-b border-slate-800/80 px-6 py-2.5 flex items-center justify-between text-xs overflow-x-auto gap-4">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Occupancy:</span>
+                <span className="font-bold text-slate-100 font-mono">
+                  {occupiedBeds}/{totalBeds} Beds ({occupancyPercentage}%)
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Pure Veg Mess Dues:</span>
+                <span className="font-bold text-amber-400 font-mono">
+                  ₹{pendingMessDeficit.toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Treasury Total:</span>
+                <span className="font-bold text-emerald-400 font-mono">
+                  ₹{(totalBankTreasury / 100000).toFixed(2)} Lakhs
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Police KYC:</span>
+                <span className="font-bold text-indigo-300 font-mono">
+                  {verifiedPolicePercentage}% Cleared
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">3/4 Quorum:</span>
+                <span className="font-bold text-emerald-400 font-mono">
+                  {housekeepingRecords.filter((h) => h.status === 'VERIFIED_DONE').length} Verified
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-slate-400">Pure Veg Mess Dues:</span>
-              <span className="font-bold text-amber-400 font-mono">
-                ₹{pendingMessDeficit.toLocaleString('en-IN')}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Treasury Total:</span>
-              <span className="font-bold text-emerald-400 font-mono">
-                ₹{(totalBankTreasury / 100000).toFixed(2)} Lakhs
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">Police KYC:</span>
-              <span className="font-bold text-indigo-300 font-mono">
-                {verifiedPolicePercentage}% Cleared
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-slate-400">3/4 Quorum:</span>
-              <span className="font-bold text-emerald-400 font-mono">
-                {housekeepingRecords.filter((h) => h.status === 'VERIFIED_DONE').length} Verified
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="text-[11px] text-emerald-400 font-semibold font-mono">
+                .EXE ⇄ .APK Interrelated Sync Active ({syncStatus.lastSyncedTimestamp})
               </span>
             </div>
           </div>
-
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-            <span className="text-[11px] text-emerald-400 font-semibold font-mono">
-              .EXE ⇄ .APK Interrelated Sync Active ({syncStatus.lastSyncedTimestamp})
-            </span>
-          </div>
-        </div>
+        )}
 
         {/* Dynamic Route Viewport Body */}
         <main className="flex-1 overflow-y-auto p-6 bg-slate-950 space-y-6">
+          
+          {/* Security Guard for Student Role attempting to view unprivileged admin tabs */}
+          {currentUser.role === 'STUDENT' && !['COMPLAINTS', 'MAINTENANCE', 'MESS', 'REVIEWS_NOTICES', 'ROOMS'].includes(activeTab) && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center max-w-2xl mx-auto my-12 space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto text-amber-400">
+                <Lock className="w-6 h-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-100">Administrative Tab Restricted</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Your resident account is scoped strictly to <strong>Resident Grievances</strong>, <strong>Room Cleaning Quorum</strong>, <strong>Mess Diet &amp; Billing</strong>, and <strong>Bulletin Board Notices</strong> in compliance with institutional data governance policies.
+              </p>
+              <div className="pt-2 flex items-center justify-center gap-3">
+                <button
+                  onClick={() => setActiveTab('COMPLAINTS')}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Go to Resident Grievances Portal
+                </button>
+                <button
+                  onClick={() => setIsLoginModalOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Switch Account (Staff/Warden)
+                </button>
+              </div>
+            </div>
+          )}
           
           {/* 0. DUAL PLATFORM INTERRELATED VIEW (.EXE <-> .APK) */}
           {activeTab === 'SYNC_DUAL' && (
@@ -2010,6 +2274,7 @@ export const App: React.FC = () => {
             <StudentManager
               students={students}
               rooms={rooms}
+              disciplinaryIncidents={disciplinaryIncidents}
               onAddStudent={handleAddStudent}
               onUpdateStudent={handleUpdateStudent}
               onDeleteStudent={handleDeleteStudent}
@@ -2017,6 +2282,8 @@ export const App: React.FC = () => {
               onInitiatePoliceVerification={(std) => setSelectedStudentForPolice(std)}
               onOpenDocumentVault={(std) => setSelectedStudentForDocs(std)}
               onOpenComplaintModal={(std) => setSelectedStudentForComplaint(std)}
+              onOpenMisconductModal={handleOpenMisconductModal}
+              onUpdateIncident={handleUpdateIncident}
               onTriggerSync={handleTriggerSync}
             />
           )}
@@ -2309,12 +2576,77 @@ export const App: React.FC = () => {
             />
           )}
 
+          {/* 11. SINGLE-PC NODE LOCK & HARDWARE FINGERPRINT ENFORCER */}
+          {activeTab === 'HARDWARE_LOCK' && (
+            <HardwareLicenseManager
+              currentFingerprint={machineFingerprint}
+              activeLicense={machineLicense}
+              clonedFingerprint={SIMULATED_CLONED_MACHINE_FINGERPRINT}
+              onSimulateMachineClone={(isCloned) => {
+                setIsMachineCloned(isCloned);
+                setMachineLicense((prev) => ({
+                  ...prev,
+                  status: isCloned ? 'HARDWARE_MISMATCH_LOCKED' : 'ACTIVE_BOUND',
+                  lastHardwareScanTimestamp: new Date().toLocaleString(),
+                }));
+                logActivity(
+                  isCloned ? 'SECURITY_ALERT_NODE_LOCK_VIOLATION' : 'NODE_LOCK_RESTORED',
+                  'SECURITY',
+                  isCloned 
+                    ? 'CRITICAL: Detected hardware signature mismatch (Unauthorized machine clone executed).'
+                    : 'Restored original authorized workstation hardware binding signature.'
+                );
+              }}
+              onUpdateLicense={(updatedLic) => {
+                setMachineLicense(updatedLic);
+                setIsMachineCloned(false);
+                logActivity('LICENSE_REBOUND', 'SECURITY', `Cryptographically rebound license to HWID: ${updatedLic.boundHwid}`);
+              }}
+            />
+          )}
+
         </main>
       </div>
 
       {/* MODAL: Documentation, Non-Technical SOP & pom.xml / DDL */}
       {showDocModal && (
         <DocumentationModal onClose={() => setShowDocModal(false)} />
+      )}
+
+      {/* MODAL: Standalone Single-PC App Packaging & Conversion Blueprint */}
+      {isPackagingModalOpen && (
+        <StandalonePackagingModal
+          isOpen={isPackagingModalOpen}
+          steps={STANDALONE_PACKAGING_STEPS}
+          onClose={() => setIsPackagingModalOpen(false)}
+        />
+      )}
+
+      {/* MODAL: Role-Wise Authentication & Credentials Portal */}
+      {isLoginModalOpen && (
+        <LoginAuthModal
+          isOpen={isLoginModalOpen}
+          currentUser={currentUser}
+          credentials={userCredentials}
+          onClose={() => setIsLoginModalOpen(false)}
+          onLoginSuccess={(user, cred) => {
+            setCurrentUser(user);
+            setIsLoginModalOpen(false);
+            if (cred.role === 'STUDENT') {
+              setActiveTab('COMPLAINTS');
+            }
+            logActivity(
+              'USER_AUTHENTICATED',
+              'SECURITY',
+              `User ${cred.fullName} (@${cred.loginId}) authenticated successfully with role [${cred.role}].`
+            );
+          }}
+          onLogout={() => {
+            setCurrentUser(INITIAL_USERS[0]);
+            setIsLoginModalOpen(false);
+            logActivity('USER_LOGOUT', 'SECURITY', `User ${currentUser.fullName} signed out.`);
+          }}
+        />
       )}
 
       {/* MODAL: Official Police Verification Form Generator & Digital Signature Pad */}
@@ -2357,6 +2689,19 @@ export const App: React.FC = () => {
             setShowDirectComplaintModal(false);
           }}
           onSubmitComplaint={handleAddComplaint}
+        />
+      )}
+
+      {/* MODAL: Guardian Misconduct Notice & SMS/WhatsApp Gateway Dispatch */}
+      {isMisconductModalOpen && (
+        <GuardianMisconductModal
+          students={students}
+          preSelectedStudent={selectedStudentForMisconduct || undefined}
+          onClose={() => {
+            setIsMisconductModalOpen(false);
+            setSelectedStudentForMisconduct(null);
+          }}
+          onDispatchNotice={handleDispatchMisconduct}
         />
       )}
 
